@@ -5,6 +5,8 @@ import {
   View,
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { AdManager, AdRequest } from '../game/ads/AdManager';
+import { AdModal } from '../game/components/AdModal';
 import { GameCanvas } from '../game/components/GameCanvas';
 import { GameOverOverlay } from '../game/components/GameOverOverlay';
 import { HUD } from '../game/components/HUD';
@@ -36,7 +38,20 @@ export default function GameScreen() {
   // Game UI States
   const [status, setStatus] = useState<GameStatus>('idle');
   const [isShopOpen, setIsShopOpen] = useState(false);
+  const [shopInitialTab, setShopInitialTab] = useState<'trails' | 'skins' | 'iap'>('trails');
   const [lastRunCoins, setLastRunCoins] = useState(0);
+  const [canReviveThisRun, setCanReviveThisRun] = useState(true);
+
+  // Ad State (Interstitial & Rewarded Ads)
+  const [activeAd, setActiveAd] = useState<AdRequest | null>(null);
+
+  // Subscribe to AdManager changes
+  useEffect(() => {
+    const unsubscribe = AdManager.subscribe((req) => {
+      setActiveAd(req);
+    });
+    return unsubscribe;
+  }, []);
 
   // Active Drawing State for Canvas
   const [activePath, setActivePath] = useState<any>(null);
@@ -76,6 +91,9 @@ export default function GameScreen() {
         setCoins(GameStorage.getCoins());
         setLastRunCoins(earnedCoins);
         setStatus('game_over');
+
+        // Check if an interstitial ad should be presented (Every 5 deaths)
+        AdManager.checkInterstitialOnDeath();
       });
       physicsRef.current.init(GameStorage.getHighScore(), GameStorage.getCoins());
     }
@@ -130,6 +148,7 @@ export default function GameScreen() {
 
     physics.init(highScore, coins);
     setLastRunCoins(0);
+    setCanReviveThisRun(true);
     setStatus('playing');
     HapticManager.medium();
   };
@@ -156,6 +175,27 @@ export default function GameScreen() {
     const next = !soundEnabled;
     GameStorage.setSoundEnabled(next);
     setSoundEnabled(next);
+  };
+
+  const handleOpenShop = (tab: 'trails' | 'skins' | 'iap' = 'trails') => {
+    setShopInitialTab(tab);
+    setIsShopOpen(true);
+  };
+
+  const handleWatchAdCoins = () => {
+    AdManager.showRewardedAd('coins_50', () => {
+      GameStorage.addCoins(50);
+      setCoins(GameStorage.getCoins());
+    });
+  };
+
+  const handleWatchAdRevive = () => {
+    if (!canReviveThisRun) return;
+    AdManager.showRewardedAd('revive', () => {
+      setCanReviveThisRun(false);
+      physicsRef.current?.revive();
+      setStatus('playing');
+    });
   };
 
   // Gesture Pan Drawing Handler
@@ -311,7 +351,7 @@ export default function GameScreen() {
           coins={coins}
           soundEnabled={soundEnabled}
           onStart={handleStart}
-          onOpenShop={() => setIsShopOpen(true)}
+          onOpenShop={() => handleOpenShop('trails')}
           onToggleSound={handleToggleSound}
         />
       )}
@@ -325,7 +365,10 @@ export default function GameScreen() {
           totalCoins={coins}
           distance={hudStats.distance}
           onRestart={handleRestart}
-          onOpenShop={() => setIsShopOpen(true)}
+          onOpenShop={() => handleOpenShop('trails')}
+          onWatchAdCoins={handleWatchAdCoins}
+          onWatchAdRevive={handleWatchAdRevive}
+          canRevive={canReviveThisRun}
         />
       )}
 
@@ -339,6 +382,18 @@ export default function GameScreen() {
         onSelectTrail={(t) => setActiveTrail(t)}
         activeSkinId={activeSkin.id}
         onSelectSkin={(s) => setActiveSkin(s)}
+        initialTab={shopInitialTab}
+        onWatchAdForCoins={handleWatchAdCoins}
+      />
+
+      {/* Ad Modal (Full-Screen Interstitial or Rewarded Ad) */}
+      <AdModal
+        ad={activeAd}
+        onClose={() => AdManager.closeAd()}
+        onOpenShopRemoveAds={() => {
+          AdManager.closeAd();
+          handleOpenShop('iap');
+        }}
       />
     </View>
   );

@@ -162,6 +162,45 @@ export class PhysicsWorld {
     Matter.Composite.add(this.world, this.ninjaBody);
   }
 
+  revive(): void {
+    const rx = this.cameraX + this.screenWidth * 0.35;
+    const ry = this.screenHeight * 0.45;
+
+    // Reset ninja position and physics
+    Matter.Body.setPosition(this.ninjaBody, { x: rx, y: ry });
+    Matter.Body.setVelocity(this.ninjaBody, { x: GameConfig.BASE_SPEED_X, y: -2 });
+    Matter.Body.setAngle(this.ninjaBody, 0);
+    Matter.Body.setAngularVelocity(this.ninjaBody, 0);
+
+    // Refill ink and reset stats
+    this.stats.ink = this.stats.maxInk;
+    this.boostTicksRemaining = 0;
+    this.stuckTicks = 0;
+    this.groundContacts = 0;
+    this.isTouchingLine = false;
+
+    // Create a temporary safety platform underneath the revived ninja
+    const platWidth = 320;
+    const platY = ry + 80;
+    const safetyPlat = Matter.Bodies.rectangle(rx, platY, platWidth, 20, {
+      isStatic: true,
+      friction: 0.001,
+      restitution: 0.08,
+      collisionFilter: {
+        category: CollisionCategory.GROUND,
+        mask: CollisionCategory.NINJA,
+      },
+      label: 'starting_ground',
+    });
+    (safetyPlat as any).customWidth = platWidth;
+    Matter.Composite.add(this.world, safetyPlat);
+    this.levelState.groundBodies.push(safetyPlat);
+
+    // Visual feedback
+    this.emitInkSplash(rx, ry);
+    this.emitSonicBoom(rx, ry);
+  }
+
   private setupCollisionHandlers(): void {
     const isNinja = (b: Matter.Body) =>
       b.label === 'ninja' || b.parent?.label === 'ninja';

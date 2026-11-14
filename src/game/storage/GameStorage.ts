@@ -9,6 +9,9 @@ const STORAGE_KEYS = {
   UNLOCKED_TRAILS: 'neon_ninja_unlocked_trails',
   UNLOCKED_SKINS: 'neon_ninja_unlocked_skins',
   SOUND_ENABLED: 'neon_ninja_sound_enabled',
+  DEATH_COUNT: 'neon_ninja_death_count',
+  HAS_REMOVED_ADS: 'neon_ninja_has_removed_ads',
+  VIP_STATUS: 'neon_ninja_vip_status',
 };
 
 class GameStorageService {
@@ -71,9 +74,10 @@ class GameStorageService {
   getTrails(): TrailStyle[] {
     const raw = this.getItem(STORAGE_KEYS.UNLOCKED_TRAILS);
     const unlockedIds: string[] = raw ? JSON.parse(raw) : ['cyber_cyan'];
+    const isVip = this.isVip();
     return INITIAL_TRAILS.map((t) => ({
       ...t,
-      unlocked: unlockedIds.includes(t.id),
+      unlocked: isVip || unlockedIds.includes(t.id),
     }));
   }
 
@@ -94,9 +98,10 @@ class GameStorageService {
   getSkins(): NinjaSkin[] {
     const raw = this.getItem(STORAGE_KEYS.UNLOCKED_SKINS);
     const unlockedIds: string[] = raw ? JSON.parse(raw) : ['neon_shinobi'];
+    const isVip = this.isVip();
     return INITIAL_SKINS.map((s) => ({
       ...s,
-      unlocked: unlockedIds.includes(s.id),
+      unlocked: isVip || unlockedIds.includes(s.id),
     }));
   }
 
@@ -121,6 +126,43 @@ class GameStorageService {
 
   setSoundEnabled(enabled: boolean): void {
     this.setItem(STORAGE_KEYS.SOUND_ENABLED, enabled ? 'true' : 'false');
+  }
+
+  // Ad Tracking: Interstitial every 5 deaths
+  getDeathCount(): number {
+    const val = this.getItem(STORAGE_KEYS.DEATH_COUNT);
+    return val ? parseInt(val, 10) || 0 : 0;
+  }
+
+  incrementDeathCount(): number {
+    const next = this.getDeathCount() + 1;
+    this.setItem(STORAGE_KEYS.DEATH_COUNT, next.toString());
+    return next;
+  }
+
+  resetDeathCount(): void {
+    this.setItem(STORAGE_KEYS.DEATH_COUNT, '0');
+  }
+
+  // In-App Purchase: Remove Ads
+  hasRemovedAds(): boolean {
+    return this.getItem(STORAGE_KEYS.HAS_REMOVED_ADS) === 'true' || this.isVip();
+  }
+
+  setRemovedAds(removed: boolean): void {
+    this.setItem(STORAGE_KEYS.HAS_REMOVED_ADS, removed ? 'true' : 'false');
+  }
+
+  // In-App Purchase: VIP status (all skins + no ads)
+  isVip(): boolean {
+    return this.getItem(STORAGE_KEYS.VIP_STATUS) === 'true';
+  }
+
+  setVip(vip: boolean): void {
+    this.setItem(STORAGE_KEYS.VIP_STATUS, vip ? 'true' : 'false');
+    if (vip) {
+      this.setRemovedAds(true);
+    }
   }
 }
 

@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
+  Alert,
   Modal,
   ScrollView,
   StyleSheet,
@@ -11,6 +12,7 @@ import { NinjaSkin, TrailStyle } from '../types';
 import { GameStorage } from '../storage/GameStorage';
 import { SoundManager } from '../audio/SoundManager';
 import { HapticManager } from '../haptics/HapticManager';
+import { IAP_PRODUCTS, IAPManager, IAPProduct } from '../iap/IAPManager';
 import { CheckIcon, CloseIcon } from './Icons';
 
 interface ShopModalProps {
@@ -22,6 +24,8 @@ interface ShopModalProps {
   onSelectTrail: (trail: TrailStyle) => void;
   activeSkinId: string;
   onSelectSkin: (skin: NinjaSkin) => void;
+  initialTab?: 'trails' | 'skins' | 'iap';
+  onWatchAdForCoins?: () => void;
 }
 
 export const ShopModal: React.FC<ShopModalProps> = ({
@@ -33,10 +37,24 @@ export const ShopModal: React.FC<ShopModalProps> = ({
   onSelectTrail,
   activeSkinId,
   onSelectSkin,
+  initialTab = 'trails',
+  onWatchAdForCoins,
 }) => {
-  const [tab, setTab] = useState<'trails' | 'skins'>('trails');
+  const [tab, setTab] = useState<'trails' | 'skins' | 'iap'>(initialTab);
   const [trails, setTrails] = useState<TrailStyle[]>(() => GameStorage.getTrails());
   const [skins, setSkins] = useState<NinjaSkin[]>(() => GameStorage.getSkins());
+  const [hasRemovedAds, setHasRemovedAds] = useState(() => GameStorage.hasRemovedAds());
+  const [isVip, setIsVip] = useState(() => GameStorage.isVip());
+
+  useEffect(() => {
+    if (visible) {
+      setTab(initialTab);
+      setTrails(GameStorage.getTrails());
+      setSkins(GameStorage.getSkins());
+      setHasRemovedAds(GameStorage.hasRemovedAds());
+      setIsVip(GameStorage.isVip());
+    }
+  }, [visible, initialTab]);
 
   const handleBuyTrail = (trail: TrailStyle) => {
     if (trail.unlocked) {
@@ -88,6 +106,29 @@ export const ShopModal: React.FC<ShopModalProps> = ({
     }
   };
 
+  const handleIAPPurchase = async (product: IAPProduct) => {
+    const res = await IAPManager.purchaseProduct(product);
+    if (res.success) {
+      setHasRemovedAds(GameStorage.hasRemovedAds());
+      setIsVip(GameStorage.isVip());
+      setTrails(GameStorage.getTrails());
+      setSkins(GameStorage.getSkins());
+      onCoinsUpdated(GameStorage.getCoins());
+      Alert.alert('BAŞARILI', res.message);
+    } else {
+      Alert.alert('HATA', res.message);
+    }
+  };
+
+  const handleRestorePurchases = async () => {
+    const res = await IAPManager.restorePurchases();
+    setHasRemovedAds(GameStorage.hasRemovedAds());
+    setIsVip(GameStorage.isVip());
+    setTrails(GameStorage.getTrails());
+    setSkins(GameStorage.getSkins());
+    Alert.alert('BİLGİ', res.message);
+  };
+
   return (
     <Modal
       visible={visible}
@@ -101,7 +142,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
           <View style={styles.header}>
             <View>
               <Text style={styles.title}>SİBER PAZAR</Text>
-              <Text style={styles.subtitle}>KOZMETİK VE ÖZELLEŞTİRME</Text>
+              <Text style={styles.subtitle}>KOZMETİK & UYGULAMA İÇİ SATIN ALMA</Text>
             </View>
 
             <View style={styles.headerRight}>
@@ -132,7 +173,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
                   tab === 'trails' && styles.activeTabText,
                 ]}
               >
-                ÇİZGİ RENKLERİ
+                ÇİZGİLER
               </Text>
             </TouchableOpacity>
 
@@ -143,7 +184,18 @@ export const ShopModal: React.FC<ShopModalProps> = ({
               <Text
                 style={[styles.tabText, tab === 'skins' && styles.activeTabText]}
               >
-                NİNJA KOSTÜMLERİ
+                KOSTÜMLER
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={[styles.tabButton, tab === 'iap' && styles.activeTab]}
+              onPress={() => setTab('iap')}
+            >
+              <Text
+                style={[styles.tabText, tab === 'iap' && styles.activeTabText]}
+              >
+                💎 MAĞAZA (IAP)
               </Text>
             </TouchableOpacity>
           </View>
@@ -153,122 +205,197 @@ export const ShopModal: React.FC<ShopModalProps> = ({
             contentContainerStyle={styles.listContent}
             showsVerticalScrollIndicator={false}
           >
-            {tab === 'trails'
-              ? trails.map((item) => {
-                  const isEquipped = item.id === activeTrailId;
-                  const canAfford = coins >= item.price;
+            {/* Free Rewarded Ad Banner (Available in all tabs) */}
+            {onWatchAdForCoins && (
+              <TouchableOpacity
+                style={styles.freeGemsAdBanner}
+                onPress={() => {
+                  onClose();
+                  onWatchAdForCoins();
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.freeGemsIcon}>🎬</Text>
+                <View style={styles.freeGemsInfo}>
+                  <Text style={styles.freeGemsTitle}>ÜCRETSİZ +50 KRİSTAL</Text>
+                  <Text style={styles.freeGemsSubtitle}>Kısa bir sponsor videosu izle ve kazan</Text>
+                </View>
+                <View style={styles.freeGemsTag}>
+                  <Text style={styles.freeGemsTagText}>REKLAM</Text>
+                </View>
+              </TouchableOpacity>
+            )}
 
-                  return (
-                    <View key={item.id} style={styles.itemRow}>
-                      {/* Color Preview Swatch */}
+            {/* TAB 1: TRAILS */}
+            {tab === 'trails' &&
+              trails.map((item) => {
+                const isEquipped = item.id === activeTrailId;
+                const canAfford = coins >= item.price;
+
+                return (
+                  <View key={item.id} style={styles.itemRow}>
+                    <View
+                      style={[
+                        styles.colorSwatch,
+                        {
+                          backgroundColor: item.primaryColor,
+                          shadowColor: item.glowColor,
+                        },
+                      ]}
+                    />
+
+                    <View style={styles.itemInfo}>
+                      <Text style={styles.itemName}>{item.name}</Text>
+                      <Text style={styles.itemGlow}>Neon Glow Efekti</Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton,
+                        isEquipped
+                          ? styles.equippedButton
+                          : item.unlocked
+                          ? styles.equipButton
+                          : canAfford
+                          ? styles.buyButton
+                          : styles.lockedButton,
+                      ]}
+                      onPress={() => handleBuyTrail(item)}
+                      activeOpacity={0.8}
+                    >
+                      {isEquipped ? (
+                        <View style={styles.equippedRow}>
+                          <CheckIcon size={14} color="#00F0FF" />
+                          <Text style={styles.equippedText}>SEÇİLİ</Text>
+                        </View>
+                      ) : item.unlocked ? (
+                        <Text style={styles.equipText}>KULLAN</Text>
+                      ) : (
+                        <View style={styles.priceRow}>
+                          <Text style={styles.priceCoin}>◆</Text>
+                          <Text style={styles.priceText}>{item.price}</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+
+            {/* TAB 2: SKINS */}
+            {tab === 'skins' &&
+              skins.map((item) => {
+                const isEquipped = item.id === activeSkinId;
+                const canAfford = coins >= item.price;
+
+                return (
+                  <View key={item.id} style={styles.itemRow}>
+                    <View
+                      style={[
+                        styles.skinAvatar,
+                        {
+                          backgroundColor: item.suitColor,
+                          borderColor: item.accentColor,
+                        },
+                      ]}
+                    >
                       <View
                         style={[
-                          styles.colorSwatch,
-                          {
-                            backgroundColor: item.primaryColor,
-                            shadowColor: item.glowColor,
-                          },
+                          styles.scarfDot,
+                          { backgroundColor: item.scarfColor },
                         ]}
                       />
-
-                      <View style={styles.itemInfo}>
-                        <Text style={styles.itemName}>{item.name}</Text>
-                        <Text style={styles.itemGlow}>Neon Glow Efekti</Text>
-                      </View>
-
-                      {/* Action Button */}
-                      <TouchableOpacity
-                        style={[
-                          styles.actionButton,
-                          isEquipped
-                            ? styles.equippedButton
-                            : item.unlocked
-                            ? styles.equipButton
-                            : canAfford
-                            ? styles.buyButton
-                            : styles.lockedButton,
-                        ]}
-                        onPress={() => handleBuyTrail(item)}
-                        activeOpacity={0.8}
-                      >
-                        {isEquipped ? (
-                          <View style={styles.equippedRow}>
-                            <CheckIcon size={14} color="#00F0FF" />
-                            <Text style={styles.equippedText}>KULLANILIYOR</Text>
-                          </View>
-                        ) : item.unlocked ? (
-                          <Text style={styles.equipText}>SEÇ</Text>
-                        ) : (
-                          <View style={styles.priceRow}>
-                            <Text style={styles.priceCoin}>◆</Text>
-                            <Text style={styles.priceText}>{item.price}</Text>
-                          </View>
-                        )}
-                      </TouchableOpacity>
                     </View>
-                  );
-                })
-              : skins.map((item) => {
-                  const isEquipped = item.id === activeSkinId;
-                  const canAfford = coins >= item.price;
+
+                    <View style={styles.itemInfo}>
+                      <Text style={styles.itemName}>{item.name}</Text>
+                      <Text style={styles.itemGlow}>Siber Ninja Zırhı</Text>
+                    </View>
+
+                    <TouchableOpacity
+                      style={[
+                        styles.actionButton,
+                        isEquipped
+                          ? styles.equippedButton
+                          : item.unlocked
+                          ? styles.equipButton
+                          : canAfford
+                          ? styles.buyButton
+                          : styles.lockedButton,
+                      ]}
+                      onPress={() => handleBuySkin(item)}
+                      activeOpacity={0.8}
+                    >
+                      {isEquipped ? (
+                        <View style={styles.equippedRow}>
+                          <CheckIcon size={14} color="#00F0FF" />
+                          <Text style={styles.equippedText}>SEÇİLİ</Text>
+                        </View>
+                      ) : item.unlocked ? (
+                        <Text style={styles.equipText}>KULLAN</Text>
+                      ) : (
+                        <View style={styles.priceRow}>
+                          <Text style={styles.priceCoin}>◆</Text>
+                          <Text style={styles.priceText}>{item.price}</Text>
+                        </View>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                );
+              })}
+
+            {/* TAB 3: IAP STORE */}
+            {tab === 'iap' && (
+              <>
+                {IAP_PRODUCTS.map((prod) => {
+                  const isPurchased = IAPManager.isProductPurchased(prod.id);
 
                   return (
-                    <View key={item.id} style={styles.itemRow}>
-                      {/* Skin Avatar Preview */}
-                      <View
-                        style={[
-                          styles.skinAvatar,
-                          {
-                            backgroundColor: item.suitColor,
-                            borderColor: item.accentColor,
-                          },
-                        ]}
-                      >
-                        <View
-                          style={[
-                            styles.scarfDot,
-                            { backgroundColor: item.scarfColor },
-                          ]}
-                        />
+                    <View key={prod.id} style={styles.iapRow}>
+                      <Text style={styles.iapIcon}>{prod.icon}</Text>
+
+                      <View style={styles.iapInfo}>
+                        <View style={styles.iapTitleRow}>
+                          <Text style={styles.iapTitle}>{prod.title}</Text>
+                          {prod.badge && (
+                            <View style={styles.iapBadge}>
+                              <Text style={styles.iapBadgeText}>{prod.badge}</Text>
+                            </View>
+                          )}
+                        </View>
+                        <Text style={styles.iapDesc}>{prod.description}</Text>
                       </View>
 
-                      <View style={styles.itemInfo}>
-                        <Text style={styles.itemName}>{item.name}</Text>
-                        <Text style={styles.itemGlow}>Özel Ninja Zırhı</Text>
-                      </View>
-
-                      {/* Action Button */}
                       <TouchableOpacity
                         style={[
-                          styles.actionButton,
-                          isEquipped
-                            ? styles.equippedButton
-                            : item.unlocked
-                            ? styles.equipButton
-                            : canAfford
-                            ? styles.buyButton
-                            : styles.lockedButton,
+                          styles.iapButton,
+                          isPurchased && styles.iapPurchasedButton,
                         ]}
-                        onPress={() => handleBuySkin(item)}
+                        onPress={() => !isPurchased && handleIAPPurchase(prod)}
                         activeOpacity={0.8}
+                        disabled={isPurchased}
                       >
-                        {isEquipped ? (
+                        {isPurchased ? (
                           <View style={styles.equippedRow}>
-                            <CheckIcon size={14} color="#00F0FF" />
-                            <Text style={styles.equippedText}>KULLANILIYOR</Text>
+                            <CheckIcon size={14} color="#00FF66" />
+                            <Text style={styles.iapPurchasedText}>ALINDI</Text>
                           </View>
-                        ) : item.unlocked ? (
-                          <Text style={styles.equipText}>SEÇ</Text>
                         ) : (
-                          <View style={styles.priceRow}>
-                            <Text style={styles.priceCoin}>◆</Text>
-                            <Text style={styles.priceText}>{item.price}</Text>
-                          </View>
+                          <Text style={styles.iapButtonText}>{prod.priceText}</Text>
                         )}
                       </TouchableOpacity>
                     </View>
                   );
                 })}
+
+                <TouchableOpacity
+                  style={styles.restoreBtn}
+                  onPress={handleRestorePurchases}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.restoreBtnText}>↺ Satın Alımları Geri Yükle</Text>
+                </TouchableOpacity>
+              </>
+            )}
           </ScrollView>
         </View>
       </View>
@@ -286,10 +413,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#0F1020',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    maxHeight: '80%',
-    paddingHorizontal: 24,
-    paddingTop: 24,
-    paddingBottom: 40,
+    maxHeight: '82%',
+    paddingHorizontal: 22,
+    paddingTop: 22,
+    paddingBottom: 36,
     borderWidth: 1,
     borderColor: 'rgba(0, 240, 255, 0.25)',
   },
@@ -297,16 +424,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 14,
   },
   title: {
-    fontSize: 22,
+    fontSize: 20,
     fontWeight: '900',
     letterSpacing: 1.5,
     color: '#FFFFFF',
   },
   subtitle: {
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: '700',
     letterSpacing: 1,
     color: '#00F0FF',
@@ -350,11 +477,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
     borderRadius: 12,
     padding: 4,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   tabButton: {
     flex: 1,
-    paddingVertical: 10,
+    paddingVertical: 9,
     alignItems: 'center',
     borderRadius: 8,
   },
@@ -364,16 +491,58 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(0, 240, 255, 0.4)',
   },
   tabText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '800',
-    letterSpacing: 1,
+    letterSpacing: 0.8,
     color: '#60646C',
   },
   activeTabText: {
     color: '#00F0FF',
   },
   listContent: {
-    gap: 12,
+    gap: 10,
+    paddingBottom: 20,
+  },
+  freeGemsAdBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 240, 255, 0.1)',
+    borderWidth: 1.5,
+    borderColor: '#00F0FF',
+    borderRadius: 14,
+    padding: 12,
+    marginBottom: 6,
+  },
+  freeGemsIcon: {
+    fontSize: 24,
+    marginRight: 10,
+  },
+  freeGemsInfo: {
+    flex: 1,
+  },
+  freeGemsTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#00F0FF',
+    letterSpacing: 0.5,
+  },
+  freeGemsSubtitle: {
+    fontSize: 10,
+    color: '#8A92A6',
+    fontWeight: '600',
+  },
+  freeGemsTag: {
+    backgroundColor: 'rgba(255, 230, 0, 0.2)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#FFE600',
+  },
+  freeGemsTagText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#FFE600',
   },
   itemRow: {
     flexDirection: 'row',
@@ -385,32 +554,32 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.06)',
   },
   colorSwatch: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 10,
   },
   skinAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 14,
+    width: 40,
+    height: 40,
+    borderRadius: 12,
     borderWidth: 2,
     alignItems: 'center',
     justifyContent: 'center',
   },
   scarfDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   itemInfo: {
     flex: 1,
-    marginLeft: 14,
+    marginLeft: 12,
   },
   itemName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
     color: '#FFFFFF',
   },
@@ -421,10 +590,10 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   actionButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 9,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
     borderRadius: 10,
-    minWidth: 95,
+    minWidth: 85,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -448,7 +617,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#00F0FF',
   },
   equipText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '900',
     color: '#070714',
     letterSpacing: 1,
@@ -469,12 +638,94 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   priceCoin: {
-    fontSize: 11,
+    fontSize: 10,
     color: '#FFE600',
   },
   priceText: {
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: '900',
     color: '#FFE600',
+  },
+  // IAP Rows
+  iapRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.15)',
+  },
+  iapIcon: {
+    fontSize: 26,
+    marginRight: 12,
+  },
+  iapInfo: {
+    flex: 1,
+  },
+  iapTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  iapTitle: {
+    fontSize: 13,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
+  },
+  iapBadge: {
+    backgroundColor: 'rgba(255, 0, 127, 0.25)',
+    borderWidth: 1,
+    borderColor: '#FF007F',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+  },
+  iapBadgeText: {
+    fontSize: 8,
+    fontWeight: '900',
+    color: '#FF007F',
+    letterSpacing: 0.5,
+  },
+  iapDesc: {
+    fontSize: 10,
+    color: '#8A92A6',
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  iapButton: {
+    backgroundColor: '#00F0FF',
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    borderRadius: 10,
+  },
+  iapPurchasedButton: {
+    backgroundColor: 'rgba(0, 255, 102, 0.15)',
+    borderWidth: 1,
+    borderColor: '#00FF66',
+  },
+  iapButtonText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#070714',
+    letterSpacing: 0.5,
+  },
+  iapPurchasedText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#00FF66',
+    letterSpacing: 0.5,
+  },
+  restoreBtn: {
+    alignItems: 'center',
+    paddingVertical: 12,
+    marginTop: 6,
+  },
+  restoreBtnText: {
+    fontSize: 11,
+    color: '#8A92A6',
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
 });
