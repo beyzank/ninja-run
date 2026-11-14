@@ -104,7 +104,7 @@ class IAPManagerService {
     }
   }
 
-  async restorePurchases(): Promise<{ success: boolean; message: string }> {
+  async restorePurchases(): Promise<{ success: boolean; message: string; restoredCount: number }> {
     HapticManager.light();
     const hasAdsRemoved = GameStorage.hasRemovedAds();
     const isVip = GameStorage.isVip();
@@ -114,12 +114,14 @@ class IAPManagerService {
       HapticManager.success();
       return {
         success: true,
+        restoredCount: 1,
         message: 'Satın alımlarınız başarıyla geri yüklendi!',
       };
     }
 
     return {
       success: true,
+      restoredCount: 0,
       message: 'Geri yüklenecek aktif bir satın alım bulunamadı.',
     };
   }

@@ -14,6 +14,7 @@ import { SoundManager } from '../audio/SoundManager';
 import { HapticManager } from '../haptics/HapticManager';
 import { IAP_PRODUCTS, IAPManager, IAPProduct } from '../iap/IAPManager';
 import { CheckIcon, CloseIcon } from './Icons';
+import { useLanguage } from '../i18n';
 
 interface ShopModalProps {
   visible: boolean;
@@ -40,11 +41,44 @@ export const ShopModal: React.FC<ShopModalProps> = ({
   initialTab = 'trails',
   onWatchAdForCoins,
 }) => {
+  const { t, isRTL } = useLanguage();
   const [tab, setTab] = useState<'trails' | 'skins' | 'iap'>(initialTab);
   const [trails, setTrails] = useState<TrailStyle[]>(() => GameStorage.getTrails());
   const [skins, setSkins] = useState<NinjaSkin[]>(() => GameStorage.getSkins());
   const [hasRemovedAds, setHasRemovedAds] = useState(() => GameStorage.hasRemovedAds());
   const [isVip, setIsVip] = useState(() => GameStorage.isVip());
+
+  const getProductInfo = (prod: IAPProduct) => {
+    if (prod.id === 'com.neoninkninja.remove_ads') {
+      return {
+        title: t('iap.remove_ads_title'),
+        desc: t('iap.remove_ads_desc'),
+        badge: t('iap.remove_ads_badge'),
+      };
+    }
+    if (prod.id === 'com.neoninkninja.gems_500') {
+      return {
+        title: t('iap.gems_500_title'),
+        desc: t('iap.gems_500_desc'),
+        badge: prod.badge,
+      };
+    }
+    if (prod.id === 'com.neoninkninja.gems_1500') {
+      return {
+        title: t('iap.gems_1500_title'),
+        desc: t('iap.gems_1500_desc'),
+        badge: t('iap.gems_1500_badge'),
+      };
+    }
+    if (prod.id === 'com.neoninkninja.vip_lord') {
+      return {
+        title: t('iap.vip_lord_title'),
+        desc: t('iap.vip_lord_desc'),
+        badge: t('iap.vip_lord_badge'),
+      };
+    }
+    return { title: prod.title, desc: prod.description, badge: prod.badge };
+  };
 
   useEffect(() => {
     if (visible) {
@@ -114,9 +148,10 @@ export const ShopModal: React.FC<ShopModalProps> = ({
       setTrails(GameStorage.getTrails());
       setSkins(GameStorage.getSkins());
       onCoinsUpdated(GameStorage.getCoins());
-      Alert.alert('BAŞARILI', res.message);
+      const info = getProductInfo(product);
+      Alert.alert(t('shop.success_title'), t('shop.purchase_success', { product: info.title }));
     } else {
-      Alert.alert('HATA', res.message);
+      Alert.alert(t('shop.error_title'), t('shop.purchase_failed'));
     }
   };
 
@@ -126,7 +161,11 @@ export const ShopModal: React.FC<ShopModalProps> = ({
     setIsVip(GameStorage.isVip());
     setTrails(GameStorage.getTrails());
     setSkins(GameStorage.getSkins());
-    Alert.alert('BİLGİ', res.message);
+    if (res.restoredCount > 0) {
+      Alert.alert(t('shop.info_title'), t('shop.restore_success'));
+    } else {
+      Alert.alert(t('shop.info_title'), t('shop.restore_empty'));
+    }
   };
 
   return (
@@ -139,13 +178,13 @@ export const ShopModal: React.FC<ShopModalProps> = ({
       <View style={styles.backdrop}>
         <View style={styles.card}>
           {/* Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, isRTL && styles.rtlRow]}>
             <View>
-              <Text style={styles.title}>SİBER PAZAR</Text>
-              <Text style={styles.subtitle}>KOZMETİK & UYGULAMA İÇİ SATIN ALMA</Text>
+              <Text style={styles.title}>{t('shop.title')}</Text>
+              <Text style={styles.subtitle}>{t('shop.subtitle')}</Text>
             </View>
 
-            <View style={styles.headerRight}>
+            <View style={[styles.headerRight, isRTL && styles.rtlRow]}>
               <View style={styles.coinBadge}>
                 <Text style={styles.coinIcon}>◆</Text>
                 <Text style={styles.coinText}>{coins}</Text>
@@ -162,7 +201,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
           </View>
 
           {/* Tab Selector */}
-          <View style={styles.tabContainer}>
+          <View style={[styles.tabContainer, isRTL && styles.rtlRow]}>
             <TouchableOpacity
               style={[styles.tabButton, tab === 'trails' && styles.activeTab]}
               onPress={() => setTab('trails')}
@@ -173,7 +212,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
                   tab === 'trails' && styles.activeTabText,
                 ]}
               >
-                ÇİZGİLER
+                {t('shop.tab_trails')}
               </Text>
             </TouchableOpacity>
 
@@ -184,7 +223,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
               <Text
                 style={[styles.tabText, tab === 'skins' && styles.activeTabText]}
               >
-                KOSTÜMLER
+                {t('shop.tab_skins')}
               </Text>
             </TouchableOpacity>
 
@@ -195,7 +234,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
               <Text
                 style={[styles.tabText, tab === 'iap' && styles.activeTabText]}
               >
-                💎 MAĞAZA (IAP)
+                {t('shop.tab_iap')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -208,7 +247,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
             {/* Free Rewarded Ad Banner (Available in all tabs) */}
             {onWatchAdForCoins && (
               <TouchableOpacity
-                style={styles.freeGemsAdBanner}
+                style={[styles.freeGemsAdBanner, isRTL && styles.rtlRow]}
                 onPress={() => {
                   onClose();
                   onWatchAdForCoins();
@@ -217,11 +256,11 @@ export const ShopModal: React.FC<ShopModalProps> = ({
               >
                 <Text style={styles.freeGemsIcon}>🎬</Text>
                 <View style={styles.freeGemsInfo}>
-                  <Text style={styles.freeGemsTitle}>ÜCRETSİZ +50 KRİSTAL</Text>
-                  <Text style={styles.freeGemsSubtitle}>Kısa bir sponsor videosu izle ve kazan</Text>
+                  <Text style={styles.freeGemsTitle}>{t('shop.free_gems_title')}</Text>
+                  <Text style={styles.freeGemsSubtitle}>{t('shop.free_gems_desc')}</Text>
                 </View>
                 <View style={styles.freeGemsTag}>
-                  <Text style={styles.freeGemsTagText}>REKLAM</Text>
+                  <Text style={styles.freeGemsTagText}>{t('gameover.ad_tag')}</Text>
                 </View>
               </TouchableOpacity>
             )}
@@ -231,9 +270,10 @@ export const ShopModal: React.FC<ShopModalProps> = ({
               trails.map((item) => {
                 const isEquipped = item.id === activeTrailId;
                 const canAfford = coins >= item.price;
+                const trailName = t(`trails.${item.id}`) || item.name;
 
                 return (
-                  <View key={item.id} style={styles.itemRow}>
+                  <View key={item.id} style={[styles.itemRow, isRTL && styles.rtlRow]}>
                     <View
                       style={[
                         styles.colorSwatch,
@@ -245,8 +285,8 @@ export const ShopModal: React.FC<ShopModalProps> = ({
                     />
 
                     <View style={styles.itemInfo}>
-                      <Text style={styles.itemName}>{item.name}</Text>
-                      <Text style={styles.itemGlow}>Neon Glow Efekti</Text>
+                      <Text style={styles.itemName}>{trailName}</Text>
+                      <Text style={styles.itemGlow}>{t('shop.trail_glow')}</Text>
                     </View>
 
                     <TouchableOpacity
@@ -266,10 +306,10 @@ export const ShopModal: React.FC<ShopModalProps> = ({
                       {isEquipped ? (
                         <View style={styles.equippedRow}>
                           <CheckIcon size={14} color="#00F0FF" />
-                          <Text style={styles.equippedText}>SEÇİLİ</Text>
+                          <Text style={styles.equippedText}>{t('shop.equipped')}</Text>
                         </View>
                       ) : item.unlocked ? (
-                        <Text style={styles.equipText}>KULLAN</Text>
+                        <Text style={styles.equipText}>{t('shop.equip')}</Text>
                       ) : (
                         <View style={styles.priceRow}>
                           <Text style={styles.priceCoin}>◆</Text>
@@ -286,9 +326,10 @@ export const ShopModal: React.FC<ShopModalProps> = ({
               skins.map((item) => {
                 const isEquipped = item.id === activeSkinId;
                 const canAfford = coins >= item.price;
+                const skinName = t(`skins.${item.id}`) || item.name;
 
                 return (
-                  <View key={item.id} style={styles.itemRow}>
+                  <View key={item.id} style={[styles.itemRow, isRTL && styles.rtlRow]}>
                     <View
                       style={[
                         styles.skinAvatar,
@@ -307,8 +348,8 @@ export const ShopModal: React.FC<ShopModalProps> = ({
                     </View>
 
                     <View style={styles.itemInfo}>
-                      <Text style={styles.itemName}>{item.name}</Text>
-                      <Text style={styles.itemGlow}>Siber Ninja Zırhı</Text>
+                      <Text style={styles.itemName}>{skinName}</Text>
+                      <Text style={styles.itemGlow}>{t('shop.skin_armor')}</Text>
                     </View>
 
                     <TouchableOpacity
@@ -328,10 +369,10 @@ export const ShopModal: React.FC<ShopModalProps> = ({
                       {isEquipped ? (
                         <View style={styles.equippedRow}>
                           <CheckIcon size={14} color="#00F0FF" />
-                          <Text style={styles.equippedText}>SEÇİLİ</Text>
+                          <Text style={styles.equippedText}>{t('shop.equipped')}</Text>
                         </View>
                       ) : item.unlocked ? (
-                        <Text style={styles.equipText}>KULLAN</Text>
+                        <Text style={styles.equipText}>{t('shop.equip')}</Text>
                       ) : (
                         <View style={styles.priceRow}>
                           <Text style={styles.priceCoin}>◆</Text>
@@ -348,21 +389,22 @@ export const ShopModal: React.FC<ShopModalProps> = ({
               <>
                 {IAP_PRODUCTS.map((prod) => {
                   const isPurchased = IAPManager.isProductPurchased(prod.id);
+                  const info = getProductInfo(prod);
 
                   return (
-                    <View key={prod.id} style={styles.iapRow}>
+                    <View key={prod.id} style={[styles.iapRow, isRTL && styles.rtlRow]}>
                       <Text style={styles.iapIcon}>{prod.icon}</Text>
 
                       <View style={styles.iapInfo}>
                         <View style={styles.iapTitleRow}>
-                          <Text style={styles.iapTitle}>{prod.title}</Text>
-                          {prod.badge && (
+                          <Text style={styles.iapTitle}>{info.title}</Text>
+                          {info.badge && (
                             <View style={styles.iapBadge}>
-                              <Text style={styles.iapBadgeText}>{prod.badge}</Text>
+                              <Text style={styles.iapBadgeText}>{info.badge}</Text>
                             </View>
                           )}
                         </View>
-                        <Text style={styles.iapDesc}>{prod.description}</Text>
+                        <Text style={styles.iapDesc}>{info.desc}</Text>
                       </View>
 
                       <TouchableOpacity
@@ -377,7 +419,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
                         {isPurchased ? (
                           <View style={styles.equippedRow}>
                             <CheckIcon size={14} color="#00FF66" />
-                            <Text style={styles.iapPurchasedText}>ALINDI</Text>
+                            <Text style={styles.iapPurchasedText}>{t('shop.purchased')}</Text>
                           </View>
                         ) : (
                           <Text style={styles.iapButtonText}>{prod.priceText}</Text>
@@ -392,7 +434,7 @@ export const ShopModal: React.FC<ShopModalProps> = ({
                   onPress={handleRestorePurchases}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.restoreBtnText}>↺ Satın Alımları Geri Yükle</Text>
+                  <Text style={styles.restoreBtnText}>{t('shop.restore_purchases')}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -425,6 +467,9 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 14,
+  },
+  rtlRow: {
+    flexDirection: 'row-reverse',
   },
   title: {
     fontSize: 20,

@@ -15,6 +15,7 @@ const STORAGE_KEYS = {
   VIP_STATUS: 'neon_ninja_vip_status',
   MISSIONS: 'neon_ninja_missions',
   MISSIONS_DATE: 'neon_ninja_missions_date',
+  LANGUAGE: 'neon_ninja_language',
 };
 
 const DEFAULT_MISSIONS: Mission[] = [
@@ -306,6 +307,14 @@ class GameStorageService {
   hasUnclaimedMissions(): boolean {
     const missions = this.getMissions();
     return missions.some((m) => m.completed && !m.claimed);
+  }
+
+  getLanguage(): string | null {
+    return this.getItem(STORAGE_KEYS.LANGUAGE);
+  }
+
+  setLanguage(lang: string): void {
+    this.setItem(STORAGE_KEYS.LANGUAGE, lang);
   }
 }
 

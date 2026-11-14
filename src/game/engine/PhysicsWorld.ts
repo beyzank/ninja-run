@@ -13,6 +13,7 @@ import {
 } from '../types';
 import { LevelGenerator, LevelState } from './LevelGenerator';
 import { LinePhysicsManager } from './LinePhysics';
+import { t } from '../i18n';
 
 export interface NinjaState {
   x: number;
@@ -320,7 +321,7 @@ export class PhysicsWorld {
 
     // Floating Combo Text
     if (mult > 1) {
-      const label = mult === 5 ? '⚡ CYBER RUSH! x5' : `KOMBO x${mult}! +${pts}`;
+      const label = mult === 5 ? t('floating.cyber_rush') : t('floating.combo', { mult, pts });
       this.emitFloatingText(label, item.x, item.y - 18, mult === 5 ? '#FFE600' : '#00F0FF');
       if (mult >= 4) {
         this.triggerShake(4);
@@ -373,7 +374,7 @@ export class PhysicsWorld {
     });
 
     this.triggerShake(12);
-    this.emitFloatingText('SÜPERSONİK PATLAMA!', booster.x, booster.y - 25, '#FF007F');
+    this.emitFloatingText(t('floating.supersonic'), booster.x, booster.y - 25, '#FF007F');
 
     SoundManager.playBooster();
     HapticManager.success();

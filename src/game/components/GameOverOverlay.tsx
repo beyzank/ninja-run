@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { RestartIcon, ShopIcon, TrophyIcon } from './Icons';
+import { useLanguage } from '../i18n';
 
 interface GameOverOverlayProps {
   score: number;
@@ -30,46 +31,47 @@ export const GameOverOverlay: React.FC<GameOverOverlayProps> = ({
   onWatchAdRevive,
   canRevive = true,
 }) => {
+  const { t, isRTL } = useLanguage();
   const isNewRecord = score >= highScore && score > 0;
 
   return (
     <View style={styles.container}>
       <View style={styles.card}>
         {/* Header */}
-        <Text style={styles.title}>OYUN BİTTİ</Text>
+        <Text style={styles.title}>{t('gameover.title')}</Text>
 
         {isNewRecord && (
           <View style={styles.newRecordBadge}>
             <TrophyIcon size={14} color="#FFE600" />
-            <Text style={styles.newRecordText}>YENİ REKOR!</Text>
+            <Text style={styles.newRecordText}>{t('gameover.new_record')}</Text>
           </View>
         )}
 
         {/* Stats Table */}
         <View style={styles.statsContainer}>
-          <View style={styles.statRow}>
-            <Text style={styles.statLabel}>SKOR</Text>
+          <View style={[styles.statRow, isRTL && styles.rtlRow]}>
+            <Text style={styles.statLabel}>{t('gameover.score')}</Text>
             <Text style={styles.statValueHighlight}>{score}</Text>
           </View>
 
           <View style={styles.divider} />
 
-          <View style={styles.statRow}>
-            <Text style={styles.statLabel}>EN İYİ SKOR</Text>
+          <View style={[styles.statRow, isRTL && styles.rtlRow]}>
+            <Text style={styles.statLabel}>{t('gameover.best_score')}</Text>
             <Text style={styles.statValue}>{highScore}</Text>
           </View>
 
           <View style={styles.divider} />
 
-          <View style={styles.statRow}>
-            <Text style={styles.statLabel}>MESAFE</Text>
+          <View style={[styles.statRow, isRTL && styles.rtlRow]}>
+            <Text style={styles.statLabel}>{t('gameover.distance')}</Text>
             <Text style={styles.statValue}>{distance}m</Text>
           </View>
 
           <View style={styles.divider} />
 
-          <View style={styles.statRow}>
-            <Text style={styles.statLabel}>TOPLANAN TAŞLAR</Text>
+          <View style={[styles.statRow, isRTL && styles.rtlRow]}>
+            <Text style={styles.statLabel}>{t('gameover.gems_collected')}</Text>
             <View style={styles.coinBadge}>
               <Text style={styles.coinIcon}>◆</Text>
               <Text style={styles.coinValue}>+{coinsEarned}</Text>
@@ -81,30 +83,30 @@ export const GameOverOverlay: React.FC<GameOverOverlayProps> = ({
         <View style={styles.rewardsSection}>
           {canRevive && onWatchAdRevive && (
             <TouchableOpacity
-              style={styles.reviveAdBtn}
+              style={[styles.reviveAdBtn, isRTL && styles.rtlRow]}
               onPress={onWatchAdRevive}
               activeOpacity={0.8}
             >
               <Text style={styles.adBtnIcon}>⚡</Text>
-              <View style={styles.adBtnTextContainer}>
-                <Text style={styles.adBtnTitle}>CANLAN & DEVAM ET</Text>
-                <Text style={styles.adBtnSubtitle}>Kaldığın yerden ful mürekkeple başla</Text>
+              <View style={[styles.adBtnTextContainer, isRTL && styles.rtlAlignRight]}>
+                <Text style={styles.adBtnTitle}>{t('gameover.revive_title')}</Text>
+                <Text style={styles.adBtnSubtitle}>{t('gameover.revive_desc')}</Text>
               </View>
-              <Text style={styles.adTag}>REKLAM</Text>
+              <Text style={styles.adTag}>{t('gameover.ad_tag')}</Text>
             </TouchableOpacity>
           )}
 
           <TouchableOpacity
-            style={styles.rewardAdBtn}
+            style={[styles.rewardAdBtn, isRTL && styles.rtlRow]}
             onPress={onWatchAdCoins}
             activeOpacity={0.8}
           >
             <Text style={styles.adBtnIcon}>💎</Text>
-            <View style={styles.adBtnTextContainer}>
-              <Text style={styles.adBtnTitle}>+50 KRİSTAL KAZAN</Text>
-              <Text style={styles.adBtnSubtitle}>Kısa bir sponsor videosu izle</Text>
+            <View style={[styles.adBtnTextContainer, isRTL && styles.rtlAlignRight]}>
+              <Text style={styles.adBtnTitle}>{t('gameover.gems_ad_title')}</Text>
+              <Text style={styles.adBtnSubtitle}>{t('gameover.gems_ad_desc')}</Text>
             </View>
-            <Text style={styles.adTag}>REKLAM</Text>
+            <Text style={styles.adTag}>{t('gameover.ad_tag')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -116,7 +118,7 @@ export const GameOverOverlay: React.FC<GameOverOverlayProps> = ({
             activeOpacity={0.8}
           >
             <RestartIcon size={18} color="#070714" />
-            <Text style={styles.restartButtonText}>YENİDEN BAŞLA</Text>
+            <Text style={styles.restartButtonText}>{t('gameover.btn_restart')}</Text>
           </TouchableOpacity>
 
           <View style={styles.subActionRow}>
@@ -126,7 +128,7 @@ export const GameOverOverlay: React.FC<GameOverOverlayProps> = ({
               activeOpacity={0.8}
             >
               <ShopIcon size={15} color="#00F0FF" />
-              <Text style={styles.shopButtonText}>MARKET</Text>
+              <Text style={styles.shopButtonText}>{t('gameover.btn_shop')}</Text>
             </TouchableOpacity>
 
             {onOpenMissions && (
@@ -136,7 +138,7 @@ export const GameOverOverlay: React.FC<GameOverOverlayProps> = ({
                 activeOpacity={0.8}
               >
                 <Text style={styles.missionsIcon}>🎯</Text>
-                <Text style={styles.missionsButtonText}>GÖREVLER</Text>
+                <Text style={styles.missionsButtonText}>{t('gameover.btn_missions')}</Text>
                 {hasUnclaimedMissions && <View style={styles.notificationDot} />}
               </TouchableOpacity>
             )}
@@ -222,6 +224,12 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 4,
+  },
+  rtlRow: {
+    flexDirection: 'row-reverse',
+  },
+  rtlAlignRight: {
+    alignItems: 'flex-end',
   },
   divider: {
     height: 1,

@@ -12,6 +12,7 @@ import { HapticManager } from '../haptics/HapticManager';
 import { GameStorage } from '../storage/GameStorage';
 import { Mission } from '../types';
 import { CheckIcon, CloseIcon } from './Icons';
+import { useLanguage } from '../i18n';
 
 interface MissionsModalProps {
   visible: boolean;
@@ -24,9 +25,26 @@ export const MissionsModal: React.FC<MissionsModalProps> = ({
   onClose,
   onCoinsUpdated,
 }) => {
+  const { t, isRTL } = useLanguage();
   const [missions, setMissions] = useState<Mission[]>(() => GameStorage.getMissions());
   const [coins, setCoins] = useState(() => GameStorage.getCoins());
   const [claimedRewardMessage, setClaimedRewardMessage] = useState<string | null>(null);
+
+  const getMissionText = (m: Mission) => {
+    if (m.id === 'm_ink') {
+      return { title: t('missions.ink_title'), desc: t('missions.ink_desc') };
+    }
+    if (m.id === 'm_draw') {
+      return { title: t('missions.draw_title'), desc: t('missions.draw_desc') };
+    }
+    if (m.id === 'm_reach') {
+      return { title: t('missions.reach_title'), desc: t('missions.reach_desc') };
+    }
+    if (m.id === 'm_combo') {
+      return { title: t('missions.combo_title'), desc: t('missions.combo_desc') };
+    }
+    return { title: m.title, desc: m.description };
+  };
 
   useEffect(() => {
     if (visible) {
@@ -49,7 +67,7 @@ export const MissionsModal: React.FC<MissionsModalProps> = ({
       SoundManager.playCoinCollect();
       HapticManager.success();
 
-      setClaimedRewardMessage(`+${reward} Kristal Hesabına Eklendi!`);
+      setClaimedRewardMessage(t('missions.claimed_toast', { reward }));
       setTimeout(() => setClaimedRewardMessage(null), 2500);
     }
   };
@@ -59,13 +77,13 @@ export const MissionsModal: React.FC<MissionsModalProps> = ({
       <View style={styles.modalBackdrop}>
         <View style={styles.card}>
           {/* Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, isRTL && styles.rtlRow]}>
             <View>
-              <Text style={styles.dangerLabel}>// SİSTEM PROTOKOLÜ //</Text>
-              <Text style={styles.title}>GÜNLÜK GÖREVLER</Text>
+              <Text style={styles.dangerLabel}>{t('missions.header_protocol')}</Text>
+              <Text style={styles.title}>{t('missions.title')}</Text>
             </View>
 
-            <View style={styles.headerRight}>
+            <View style={[styles.headerRight, isRTL && styles.rtlRow]}>
               <View style={styles.coinBadge}>
                 <Text style={styles.coinIcon}>◆</Text>
                 <Text style={styles.coinText}>{coins}</Text>
@@ -88,10 +106,10 @@ export const MissionsModal: React.FC<MissionsModalProps> = ({
           )}
 
           {/* Mission Subtitle */}
-          <View style={styles.resetTimerBanner}>
+          <View style={[styles.resetTimerBanner, isRTL && styles.rtlRow]}>
             <Text style={styles.resetTimerIcon}>⏳</Text>
             <Text style={styles.resetTimerText}>
-              Görevler her gece 00:00'da sıfırlanır ve yenilenir.
+              {t('missions.reset_timer')}
             </Text>
           </View>
 
@@ -107,6 +125,7 @@ export const MissionsModal: React.FC<MissionsModalProps> = ({
                   100,
                   Math.round((mission.progress / mission.target) * 100)
                 );
+                const info = getMissionText(mission);
 
               return (
                 <View
@@ -117,14 +136,14 @@ export const MissionsModal: React.FC<MissionsModalProps> = ({
                     mission.claimed && styles.missionCardClaimed,
                   ]}
                 >
-                  <View style={styles.missionTopRow}>
+                  <View style={[styles.missionTopRow, isRTL && styles.rtlRow]}>
                     <View style={styles.iconContainer}>
                       <Text style={styles.missionIcon}>{mission.icon}</Text>
                     </View>
 
                     <View style={styles.missionInfo}>
-                      <Text style={styles.missionTitle}>{mission.title}</Text>
-                      <Text style={styles.missionDesc}>{mission.description}</Text>
+                      <Text style={styles.missionTitle}>{info.title}</Text>
+                      <Text style={styles.missionDesc}>{info.desc}</Text>
                     </View>
 
                     <View style={styles.rewardBadge}>
@@ -135,13 +154,13 @@ export const MissionsModal: React.FC<MissionsModalProps> = ({
 
                   {/* Progress Bar */}
                   <View style={styles.progressSection}>
-                    <View style={styles.progressHeader}>
+                    <View style={[styles.progressHeader, isRTL && styles.rtlRow]}>
                       <Text style={styles.progressLabel}>
                         {mission.claimed
-                          ? 'TAMAMLANDI'
+                          ? t('missions.status_completed')
                           : mission.completed
-                          ? 'ÖDÜLE HAZIR'
-                          : 'İLERLEME'}
+                          ? t('missions.status_ready')
+                          : t('missions.status_progress')}
                       </Text>
                       <Text style={styles.progressCount}>
                         {mission.progress} / {mission.target} (%{percent})
@@ -165,7 +184,7 @@ export const MissionsModal: React.FC<MissionsModalProps> = ({
                     {mission.claimed ? (
                       <View style={styles.claimedBadge}>
                         <CheckIcon size={14} color="#00F0FF" />
-                        <Text style={styles.claimedText}>ÖDÜL ALINDI</Text>
+                        <Text style={styles.claimedText}>{t('missions.claimed_badge')}</Text>
                       </View>
                     ) : mission.completed ? (
                       <TouchableOpacity
@@ -174,12 +193,12 @@ export const MissionsModal: React.FC<MissionsModalProps> = ({
                         activeOpacity={0.8}
                       >
                         <Text style={styles.claimButtonText}>
-                          ÖDÜLÜ AL (+{mission.rewardCoins} ◆)
+                          {t('missions.btn_claim', { reward: mission.rewardCoins })}
                         </Text>
                       </TouchableOpacity>
                     ) : (
                       <View style={styles.inProgressBadge}>
-                        <Text style={styles.inProgressText}>DEVAM EDİYOR</Text>
+                        <Text style={styles.inProgressText}>{t('missions.status_in_progress')}</Text>
                       </View>
                     )}
                   </View>
@@ -221,6 +240,9 @@ const styles = StyleSheet.create({
     paddingBottom: 12,
     borderBottomWidth: 1,
     borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  rtlRow: {
+    flexDirection: 'row-reverse',
   },
   dangerLabel: {
     fontSize: 9,

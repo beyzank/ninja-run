@@ -10,6 +10,7 @@ import { AdRequest } from '../ads/AdManager';
 import { CloseIcon, CheckIcon } from './Icons';
 import { HapticManager } from '../haptics/HapticManager';
 import { SoundManager } from '../audio/SoundManager';
+import { useLanguage } from '../i18n';
 
 interface AdModalProps {
   ad: AdRequest | null;
@@ -22,6 +23,7 @@ export const AdModal: React.FC<AdModalProps> = ({
   onClose,
   onOpenShopRemoveAds,
 }) => {
+  const { t, isRTL } = useLanguage();
   const [secondsRemaining, setSecondsRemaining] = useState(5);
   const [canClose, setCanClose] = useState(false);
 
@@ -64,10 +66,10 @@ export const AdModal: React.FC<AdModalProps> = ({
     <Modal visible={!!ad} transparent animationType="fade">
       <View style={styles.container}>
         {/* Top Bar with Timer / Close */}
-        <View style={styles.topBar}>
+        <View style={[styles.topBar, isRTL && styles.rtlRow]}>
           <View style={styles.badge}>
             <Text style={styles.badgeText}>
-              {isRewarded ? '🎬 ÖDÜLLÜ REKLAM' : '⚡ SPONSOR REKLAMI'}
+              {isRewarded ? t('ads.rewarded_badge') : t('ads.interstitial_badge')}
             </Text>
           </View>
 
@@ -77,13 +79,13 @@ export const AdModal: React.FC<AdModalProps> = ({
               onPress={handleClose}
               activeOpacity={0.8}
             >
-              <Text style={styles.closeBtnText}>ÖDÜLÜ AL & KAPAT</Text>
+              <Text style={styles.closeBtnText}>{t('ads.btn_claim_close')}</Text>
               <CloseIcon size={14} color="#070714" />
             </TouchableOpacity>
           ) : (
             <View style={styles.timerBadge}>
               <Text style={styles.timerText}>
-                {secondsRemaining}s sonra geçilebilir
+                {t('ads.seconds_remaining', { seconds: secondsRemaining })}
               </Text>
             </View>
           )}
@@ -101,12 +103,12 @@ export const AdModal: React.FC<AdModalProps> = ({
           <Text style={styles.adTitle}>{ad.title}</Text>
           <Text style={styles.adDesc}>
             {isRewarded
-              ? 'Tebrikler! Reklamı tamamlayarak ödülünü almaya hak kazandın.'
-              : 'Siber dünyada kesintisiz koşu ve maksimum akış deneyimi.'}
+              ? t('ads.rewarded_desc')
+              : t('ads.interstitial_desc')}
           </Text>
 
           <TouchableOpacity style={styles.ctaBtn} activeOpacity={0.8}>
-            <Text style={styles.ctaBtnText}>ŞİMDİ KEŞFET</Text>
+            <Text style={styles.ctaBtnText}>{t('ads.btn_discover')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -121,7 +123,7 @@ export const AdModal: React.FC<AdModalProps> = ({
             activeOpacity={0.7}
           >
             <Text style={styles.removeAdsText}>
-              🚫 Reklamları sonsuza dek kaldırın • ₺39.99
+              {t('ads.remove_ads_prompt')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -145,6 +147,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  rtlRow: {
+    flexDirection: 'row-reverse',
   },
   badge: {
     backgroundColor: 'rgba(0, 240, 255, 0.15)',

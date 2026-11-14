@@ -1,6 +1,7 @@
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { MuteIcon, PlayIcon, ShopIcon, VolumeIcon } from './Icons';
+import { SUPPORTED_LANGUAGES, SupportedLanguage, useLanguage } from '../i18n';
 
 interface StartOverlayProps {
   highScore: number;
@@ -9,8 +10,10 @@ interface StartOverlayProps {
   onStart: () => void;
   onOpenShop: () => void;
   onOpenMissions: () => void;
+  onOpenLanguage?: () => void;
   hasUnclaimedMissions?: boolean;
   onToggleSound: () => void;
+  currentLang?: SupportedLanguage;
 }
 
 export const StartOverlay: React.FC<StartOverlayProps> = ({
@@ -20,56 +23,76 @@ export const StartOverlay: React.FC<StartOverlayProps> = ({
   onStart,
   onOpenShop,
   onOpenMissions,
+  onOpenLanguage,
   hasUnclaimedMissions = false,
   onToggleSound,
+  currentLang,
 }) => {
+  const { t, currentLanguageInfo: hookLangInfo, isRTL, lang: hookLang } = useLanguage();
+  const activeLang = currentLang || hookLang;
+  const currentLanguageInfo =
+    SUPPORTED_LANGUAGES.find((l) => l.code === activeLang) || hookLangInfo;
+
   return (
     <View style={styles.container}>
       {/* Top action buttons */}
-      <View style={styles.header}>
+      <View style={[styles.header, isRTL && styles.rtlRow]}>
         <View style={styles.coinBadge}>
           <Text style={styles.coinIcon}>◆</Text>
-          <Text style={styles.coinText}>{coins} GEMS</Text>
+          <Text style={styles.coinText}>{coins} {t('start.gems')}</Text>
         </View>
 
-        <TouchableOpacity
-          style={styles.iconButton}
-          onPress={onToggleSound}
-          activeOpacity={0.7}
-        >
-          {soundEnabled ? (
-            <VolumeIcon size={20} color="#00F0FF" />
-          ) : (
-            <MuteIcon size={20} color="#60646C" />
+        <View style={styles.headerControls}>
+          {onOpenLanguage && (
+            <TouchableOpacity
+              style={styles.langButton}
+              onPress={onOpenLanguage}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.langFlag}>{currentLanguageInfo.flag}</Text>
+              <Text style={styles.langCode}>{currentLanguageInfo.code.toUpperCase()}</Text>
+            </TouchableOpacity>
           )}
-        </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.iconButton}
+            onPress={onToggleSound}
+            activeOpacity={0.7}
+          >
+            {soundEnabled ? (
+              <VolumeIcon size={20} color="#00F0FF" />
+            ) : (
+              <MuteIcon size={20} color="#60646C" />
+            )}
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Hero Title */}
       <View style={styles.hero}>
-        <Text style={styles.titleGlitch}>NEON INK</Text>
-        <Text style={styles.titleMain}>NINJA</Text>
-        <Text style={styles.subtitle}>DRAW PATHS • FLOW • SURVIVE</Text>
+        <Text style={styles.titleGlitch}>{t('start.title_top')}</Text>
+        <Text style={styles.titleMain}>{t('start.title_bottom')}</Text>
+        <Text style={styles.subtitle}>{t('start.subtitle')}</Text>
 
         <View style={styles.highScoreCard}>
-          <Text style={styles.highScoreLabel}>BEST RUN</Text>
+          <Text style={styles.highScoreLabel}>{t('start.best_run')}</Text>
           <Text style={styles.highScoreValue}>{highScore}</Text>
         </View>
       </View>
 
       {/* Tutorial Hints */}
       <View style={styles.tutorialContainer}>
-        <View style={styles.tutorialItem}>
+        <View style={[styles.tutorialItem, isRTL && styles.rtlRow]}>
           <Text style={styles.tutorialBullet}>✏️</Text>
-          <Text style={styles.tutorialText}>Parmağınla yol çiz, ninja üzerinde aksın</Text>
+          <Text style={[styles.tutorialText, isRTL && styles.rtlText]}>{t('start.tutorial_draw')}</Text>
         </View>
-        <View style={styles.tutorialItem}>
+        <View style={[styles.tutorialItem, isRTL && styles.rtlRow]}>
           <Text style={styles.tutorialBullet}>💧</Text>
-          <Text style={styles.tutorialText}>Mavi orbları topla veya çizim yapmayarak otomatik dolmasını bekle</Text>
+          <Text style={[styles.tutorialText, isRTL && styles.rtlText]}>{t('start.tutorial_ink')}</Text>
         </View>
-        <View style={styles.tutorialItem}>
+        <View style={[styles.tutorialItem, isRTL && styles.rtlRow]}>
           <Text style={styles.tutorialBullet}>⚡</Text>
-          <Text style={styles.tutorialText}>Lazer, diken ve kırmızı bölgelerden kaçın</Text>
+          <Text style={[styles.tutorialText, isRTL && styles.rtlText]}>{t('start.tutorial_hazards')}</Text>
         </View>
       </View>
 
@@ -81,7 +104,7 @@ export const StartOverlay: React.FC<StartOverlayProps> = ({
           activeOpacity={0.8}
         >
           <PlayIcon size={20} color="#070714" />
-          <Text style={styles.startButtonText}>BAŞLA</Text>
+          <Text style={styles.startButtonText}>{t('start.btn_start')}</Text>
         </TouchableOpacity>
 
         <View style={styles.subActionRow}>
@@ -91,7 +114,7 @@ export const StartOverlay: React.FC<StartOverlayProps> = ({
             activeOpacity={0.8}
           >
             <ShopIcon size={16} color="#00F0FF" />
-            <Text style={styles.subButtonText}>MARKET</Text>
+            <Text style={styles.subButtonText}>{t('start.btn_shop')}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -100,7 +123,7 @@ export const StartOverlay: React.FC<StartOverlayProps> = ({
             activeOpacity={0.8}
           >
             <Text style={styles.subButtonEmoji}>🎯</Text>
-            <Text style={styles.subButtonText}>GÖREVLER</Text>
+            <Text style={styles.subButtonText}>{t('start.btn_missions')}</Text>
             {hasUnclaimedMissions && <View style={styles.notificationDot} />}
           </TouchableOpacity>
         </View>
@@ -129,6 +152,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  headerControls: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  langButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 240, 255, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.35)',
+    gap: 6,
+  },
+  langFlag: {
+    fontSize: 14,
+  },
+  langCode: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#00F0FF',
+    letterSpacing: 0.8,
+  },
+  rtlRow: {
+    flexDirection: 'row-reverse',
+  },
+  rtlText: {
+    textAlign: 'right',
   },
   coinBadge: {
     flexDirection: 'row',

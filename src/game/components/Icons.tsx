@@ -60,6 +60,12 @@ export const CheckIcon: React.FC<IconProps> = ({ size = 20, color = '#00F0FF' })
   </View>
 );
 
+export const GlobeIcon: React.FC<IconProps> = ({ size = 20, color = '#00F0FF' }) => (
+  <View style={[styles.center, { width: size, height: size }]}>
+    <Text style={{ fontSize: size * 0.85, color, lineHeight: size }}>🌐</Text>
+  </View>
+);
+
 const styles = StyleSheet.create({
   center: {
     alignItems: 'center',

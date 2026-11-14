@@ -7,13 +7,14 @@ import {
 } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import { AdManager, AdRequest } from '../game/ads/AdManager';
-import { AdModal } from '../game/components/AdModal';
 import { GameCanvas } from '../game/components/GameCanvas';
 import { GameOverOverlay } from '../game/components/GameOverOverlay';
 import { HUD } from '../game/components/HUD';
 import { MissionsModal } from '../game/components/MissionsModal';
 import { ShopModal } from '../game/components/ShopModal';
 import { StartOverlay } from '../game/components/StartOverlay';
+import { LanguageModal } from '../game/components/LanguageModal';
+import { useLanguage } from '../game/i18n';
 import { INITIAL_SKINS, INITIAL_TRAILS } from '../game/config/Cosmetics';
 import { GameConfig } from '../game/config/GameConfig';
 import { NinjaState, PhysicsWorld } from '../game/engine/PhysicsWorld';
@@ -21,11 +22,13 @@ import { HapticManager } from '../game/haptics/HapticManager';
 import { SoundManager } from '../game/audio/SoundManager';
 import { GameStorage } from '../game/storage/GameStorage';
 import { GameStats, GameStatus, NinjaSkin, TrailStyle } from '../game/types';
+import {AdModal} from "@/game/components/AdModal";
 
 export default function GameScreen() {
   const { width, height } = useWindowDimensions();
 
   // Storage states
+  const { lang, setLanguage } = useLanguage();
   const [highScore, setHighScore] = useState<number>(() => GameStorage.getHighScore());
   const [coins, setCoins] = useState<number>(() => GameStorage.getCoins());
   const [activeTrail, setActiveTrail] = useState<TrailStyle>(() => {
@@ -42,6 +45,7 @@ export default function GameScreen() {
   const [status, setStatus] = useState<GameStatus>('idle');
   const [isShopOpen, setIsShopOpen] = useState(false);
   const [isMissionsOpen, setIsMissionsOpen] = useState(false);
+  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
   const [shopInitialTab, setShopInitialTab] = useState<'trails' | 'skins' | 'iap'>('trails');
   const [lastRunCoins, setLastRunCoins] = useState(0);
   const [canReviveThisRun, setCanReviveThisRun] = useState(true);
@@ -436,6 +440,7 @@ export default function GameScreen() {
       {/* In-Game HUD (Ink, Score, Coins, Boost, Pause, Instant Restart) */}
       {(status === 'playing' || status === 'paused') && (
         <HUD
+          key={`hud_${lang}`}
           stats={hudStats}
           trailStyle={activeTrail}
           isPaused={status === 'paused'}
@@ -448,12 +453,15 @@ export default function GameScreen() {
       {/* Start / Menu Screen */}
       {status === 'idle' && (
         <StartOverlay
+          key={`start_${lang}`}
+          currentLang={lang}
           highScore={highScore}
           coins={coins}
           soundEnabled={soundEnabled}
           onStart={handleStart}
           onOpenShop={() => handleOpenShop('trails')}
           onOpenMissions={() => setIsMissionsOpen(true)}
+          onOpenLanguage={() => setIsLanguageOpen(true)}
           hasUnclaimedMissions={GameStorage.hasUnclaimedMissions()}
           onToggleSound={handleToggleSound}
         />
@@ -462,6 +470,7 @@ export default function GameScreen() {
       {/* Game Over Screen */}
       {status === 'game_over' && (
         <GameOverOverlay
+          key={`gameover_${lang}`}
           score={hudStats.score}
           highScore={highScore}
           coinsEarned={lastRunCoins}
@@ -479,6 +488,7 @@ export default function GameScreen() {
 
       {/* Shop Modal */}
       <ShopModal
+        key={`shop_${lang}`}
         visible={isShopOpen}
         onClose={() => setIsShopOpen(false)}
         coins={coins}
@@ -493,13 +503,24 @@ export default function GameScreen() {
 
       {/* Daily Missions Modal */}
       <MissionsModal
+        key={`missions_${lang}`}
         visible={isMissionsOpen}
         onClose={() => setIsMissionsOpen(false)}
         onCoinsUpdated={(newCoins) => setCoins(newCoins)}
       />
 
+      {/* Language Selection Modal */}
+      <LanguageModal
+        key={`lang_modal_${lang}`}
+        visible={isLanguageOpen}
+        onClose={() => setIsLanguageOpen(false)}
+        currentLang={lang}
+        onSelectLanguage={(code) => setLanguage(code)}
+      />
+
       {/* Ad Modal (Full-Screen Interstitial or Rewarded Ad) */}
       <AdModal
+        key={`ad_${lang}`}
         ad={activeAd}
         onClose={() => AdManager.closeAd()}
         onOpenShopRemoveAds={() => {

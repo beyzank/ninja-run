@@ -7,7 +7,7 @@ class HapticManagerService {
   light(): void {
     if (!this.isAvailable) return;
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
     } catch {
       // Ignore
     }
@@ -16,7 +16,7 @@ class HapticManagerService {
   medium(): void {
     if (!this.isAvailable) return;
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {});
     } catch {
       // Ignore
     }
@@ -25,7 +25,7 @@ class HapticManagerService {
   heavy(): void {
     if (!this.isAvailable) return;
     try {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy).catch(() => {});
     } catch {
       // Ignore
     }
@@ -34,7 +34,7 @@ class HapticManagerService {
   success(): void {
     if (!this.isAvailable) return;
     try {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
     } catch {
       // Ignore
     }
@@ -43,7 +43,7 @@ class HapticManagerService {
   warning(): void {
     if (!this.isAvailable) return;
     try {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
     } catch {
       // Ignore
     }
@@ -52,7 +52,16 @@ class HapticManagerService {
   error(): void {
     if (!this.isAvailable) return;
     try {
-      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+    } catch {
+      // Ignore
+    }
+  }
+
+  selection(): void {
+    if (!this.isAvailable) return;
+    try {
+      Haptics.selectionAsync().catch(() => {});
     } catch {
       // Ignore
     }

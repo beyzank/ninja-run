@@ -2,6 +2,7 @@ import React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { GameStats, TrailStyle } from '../types';
 import { PauseIcon, PlayIcon, RestartIcon } from './Icons';
+import { useLanguage } from '../i18n';
 
 interface HUDProps {
   stats: GameStats;
@@ -20,6 +21,7 @@ export const HUD: React.FC<HUDProps> = ({
   onRestart,
   onQuitToMenu,
 }) => {
+  const { t, isRTL } = useLanguage();
   const inkPercent = Math.max(0, Math.min(100, (stats.ink / stats.maxInk) * 100));
   const isLowInk = inkPercent < 25;
   const speedKmh = Math.floor(stats.speed * 12);
@@ -28,12 +30,12 @@ export const HUD: React.FC<HUDProps> = ({
     <>
       <View style={styles.container} pointerEvents="box-none">
         {/* Top Bar: Ink Gauge, Score & Action Buttons */}
-        <View style={styles.topRow} pointerEvents="box-none">
+        <View style={[styles.topRow, isRTL && styles.rtlRow]} pointerEvents="box-none">
           {/* Ink Gauge */}
           <View style={styles.inkContainer}>
-            <View style={styles.inkHeader}>
+            <View style={[styles.inkHeader, isRTL && styles.rtlRow]}>
               <Text style={[styles.inkLabel, isLowInk && styles.inkLowLabel]}>
-                {isLowInk ? '⚠ MÜREKKEP AZALDI' : '💧 MÜREKKEP'}
+                {isLowInk ? `⚠ ${t('hud.ink_low')}` : `💧 ${t('hud.ink')}`}
               </Text>
               <Text style={[styles.inkValue, isLowInk && styles.inkLowLabel]}>
                 {Math.round(inkPercent)}%
@@ -77,8 +79,8 @@ export const HUD: React.FC<HUDProps> = ({
                     ]}
                   >
                     {stats.comboMultiplier >= 5
-                      ? '⚡ CYBER RUSH x5'
-                      : `KOMBO x${stats.comboMultiplier}`}
+                      ? t('hud.cyber_rush')
+                      : `${t('hud.combo')} x${stats.comboMultiplier}`}
                   </Text>
                   <Text style={styles.comboStreakText}>{stats.combo}x</Text>
                 </View>
@@ -132,7 +134,7 @@ export const HUD: React.FC<HUDProps> = ({
         <View style={styles.bottomRow} pointerEvents="box-none">
           <View style={[styles.speedBadge, stats.isBoosting && styles.boostBadge]}>
             <Text style={styles.speedLabel}>
-              {stats.isBoosting ? '⚡ BOOST' : 'SPEED'}
+              {stats.isBoosting ? `⚡ ${t('hud.boost')}` : t('hud.speed')}
             </Text>
             <Text style={styles.speedValue}>{speedKmh} km/h</Text>
           </View>
@@ -143,12 +145,16 @@ export const HUD: React.FC<HUDProps> = ({
       <Modal visible={isPaused} transparent animationType="fade">
         <View style={styles.pauseBackdrop}>
           <View style={styles.pauseCard}>
-            <Text style={styles.pauseHeader}>// DURAKLATILDI //</Text>
-            <Text style={styles.pauseTitle}>OYUN DURDU</Text>
+            <Text style={styles.pauseHeader}>{t('hud.paused_header')}</Text>
+            <Text style={styles.pauseTitle}>{t('hud.paused_title')}</Text>
 
             <View style={styles.pauseStats}>
-              <Text style={styles.pauseStatText}>Mevcut Skor: {stats.score}</Text>
-              <Text style={styles.pauseStatText}>Mesafe: {stats.distance}m</Text>
+              <Text style={styles.pauseStatText}>
+                {t('hud.current_score', { score: stats.score })}
+              </Text>
+              <Text style={styles.pauseStatText}>
+                {t('hud.distance_val', { distance: stats.distance })}
+              </Text>
             </View>
 
             <View style={styles.pauseActions}>
@@ -157,7 +163,7 @@ export const HUD: React.FC<HUDProps> = ({
                 onPress={onTogglePause}
                 activeOpacity={0.8}
               >
-                <Text style={styles.resumeBtnText}>DEVAM ET</Text>
+                <Text style={styles.resumeBtnText}>{t('hud.btn_resume')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -169,7 +175,7 @@ export const HUD: React.FC<HUDProps> = ({
                 activeOpacity={0.8}
               >
                 <RestartIcon size={16} color="#00F0FF" />
-                <Text style={styles.restartPauseBtnText}>YENİDEN BAŞLAT</Text>
+                <Text style={styles.restartPauseBtnText}>{t('hud.btn_restart')}</Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -177,7 +183,7 @@ export const HUD: React.FC<HUDProps> = ({
                 onPress={onQuitToMenu}
                 activeOpacity={0.8}
               >
-                <Text style={styles.menuPauseBtnText}>ANA MENÜYE DÖN</Text>
+                <Text style={styles.menuPauseBtnText}>{t('hud.btn_menu')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -202,6 +208,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  rtlRow: {
+    flexDirection: 'row-reverse',
   },
   inkContainer: {
     width: 140,
