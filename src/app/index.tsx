@@ -15,6 +15,7 @@ import { MissionsModal } from '../game/components/MissionsModal';
 import { ShopModal } from '../game/components/ShopModal';
 import { StartOverlay } from '../game/components/StartOverlay';
 import { INITIAL_SKINS, INITIAL_TRAILS } from '../game/config/Cosmetics';
+import { GameConfig } from '../game/config/GameConfig';
 import { NinjaState, PhysicsWorld } from '../game/engine/PhysicsWorld';
 import { HapticManager } from '../game/haptics/HapticManager';
 import { SoundManager } from '../game/audio/SoundManager';
@@ -65,12 +66,23 @@ export default function GameScreen() {
     distance: 0,
     ink: 100,
     maxInk: 100,
-    speed: 5.8,
+    speed: GameConfig.BASE_SPEED_X,
     isBoosting: false,
     combo: 0,
     comboMultiplier: 1,
     comboTimerRatio: 0,
   });
+
+  // BGM Lifecycle management
+  useEffect(() => {
+    if (GameStorage.isMusicEnabled() && GameStorage.isSoundEnabled()) {
+      SoundManager.playBgm();
+      SoundManager.setBgmVolume(0.35);
+    }
+    return () => {
+      SoundManager.stopBgm();
+    };
+  }, []);
 
   // Physics World Instance Ref
   const physicsRef = useRef<PhysicsWorld | null>(null);
@@ -97,6 +109,9 @@ export default function GameScreen() {
         setCoins(GameStorage.getCoins());
         setLastRunCoins(earnedCoins);
         setStatus('game_over');
+
+        // Duck music on Game Over
+        SoundManager.setBgmVolume(0.18);
 
         // Check if an interstitial ad should be presented (Every 5 deaths)
         AdManager.checkInterstitialOnDeath();
@@ -157,6 +172,10 @@ export default function GameScreen() {
     setCanReviveThisRun(true);
     setStatus('playing');
     HapticManager.medium();
+
+    // Start / Boost BGM
+    SoundManager.playBgm();
+    SoundManager.setBgmVolume(0.52);
   };
 
   const handleRestart = () => {
@@ -165,6 +184,7 @@ export default function GameScreen() {
 
   const handleQuitToMenu = () => {
     SoundManager.stopDrawingSound();
+    SoundManager.setBgmVolume(0.32);
     setStatus('idle');
   };
 
@@ -172,15 +192,25 @@ export default function GameScreen() {
     if (status === 'playing') {
       setStatus('paused');
       SoundManager.stopDrawingSound();
+      SoundManager.pauseBgm();
     } else if (status === 'paused') {
       setStatus('playing');
+      SoundManager.resumeBgm();
     }
   };
 
   const handleToggleSound = () => {
     const next = !soundEnabled;
     GameStorage.setSoundEnabled(next);
+    GameStorage.setMusicEnabled(next);
     setSoundEnabled(next);
+    if (!next) {
+      SoundManager.stopBgm();
+      SoundManager.stopDrawingSound();
+    } else {
+      SoundManager.playBgm();
+      SoundManager.setBgmVolume(status === 'playing' ? 0.52 : 0.32);
+    }
   };
 
   const handleOpenShop = (tab: 'trails' | 'skins' | 'iap' = 'trails') => {
@@ -201,6 +231,8 @@ export default function GameScreen() {
       setCanReviveThisRun(false);
       physicsRef.current?.revive();
       setStatus('playing');
+      SoundManager.setBgmVolume(0.52);
+      SoundManager.resumeBgm();
     });
   };
 

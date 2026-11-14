@@ -9,6 +9,7 @@ const STORAGE_KEYS = {
   UNLOCKED_TRAILS: 'neon_ninja_unlocked_trails',
   UNLOCKED_SKINS: 'neon_ninja_unlocked_skins',
   SOUND_ENABLED: 'neon_ninja_sound_enabled',
+  MUSIC_ENABLED: 'neon_ninja_music_enabled',
   DEATH_COUNT: 'neon_ninja_death_count',
   HAS_REMOVED_ADS: 'neon_ninja_has_removed_ads',
   VIP_STATUS: 'neon_ninja_vip_status',
@@ -179,6 +180,15 @@ class GameStorageService {
 
   setSoundEnabled(enabled: boolean): void {
     this.setItem(STORAGE_KEYS.SOUND_ENABLED, enabled ? 'true' : 'false');
+  }
+
+  isMusicEnabled(): boolean {
+    const val = this.getItem(STORAGE_KEYS.MUSIC_ENABLED);
+    return val !== 'false';
+  }
+
+  setMusicEnabled(enabled: boolean): void {
+    this.setItem(STORAGE_KEYS.MUSIC_ENABLED, enabled ? 'true' : 'false');
   }
 
   // Ad Tracking: Interstitial every 5 deaths

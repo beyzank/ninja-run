@@ -17,12 +17,12 @@ export const GameConfig = {
   NINJA_FRICTION: 0.005,
   NINJA_RESTITUTION: 0.12,
 
-  // Speed and acceleration
-  BASE_SPEED_X: 4.4, // Responsive and fluid runner speed
-  MAX_SPEED_X: 11.5,
-  ACCELERATION_RATE: 0.00012, // speed increases gradually
-  BOOST_SPEED_MULTIPLIER: 1.5,
-  BOOST_DURATION_TICKS: 80, // ~1.3 seconds
+  // Speed and time-based acceleration
+  BASE_SPEED_X: 5.2, // Clean, comfortable initial starting speed (~62 km/h)
+  MAX_SPEED_X: 12.5, // Thrilling arcade top speed (~150 km/h)
+  SPEED_INCREASE_PER_SECOND: 0.12, // Noticeable continuous acceleration (+1.2 speed every 10 seconds)
+  BOOST_SPEED_MULTIPLIER: 1.45,
+  BOOST_DURATION_TICKS: 85, // ~1.4 seconds
   START_PLATFORM_WIDTH: 1400, // Long runway to get the hang of drawing
   MIN_HAZARD_DISTANCE: 1800, // No lethal traps until player passes the tutorial runway
 

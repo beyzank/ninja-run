@@ -68,6 +68,7 @@ export class PhysicsWorld {
   private comboCount = 0;
   private comboTimerTicks = 0;
   private readonly COMBO_MAX_TICKS = 180;
+  private runTicks = 0;
   private boostTicksRemaining = 0;
   private isTouchingLine = false;
   private groundContacts = 0;
@@ -111,6 +112,7 @@ export class PhysicsWorld {
     this.shakeMagnitude = 0;
     this.comboCount = 0;
     this.comboTimerTicks = 0;
+    this.runTicks = 0;
     this.boostTicksRemaining = 0;
     this.isTouchingLine = false;
     this.groundContacts = 0;
@@ -196,6 +198,7 @@ export class PhysicsWorld {
     // Refill ink and reset stats
     this.stats.ink = this.stats.maxInk;
     this.boostTicksRemaining = 0;
+    this.runTicks = Math.max(0, Math.floor(this.runTicks * 0.7));
     this.stuckTicks = 0;
     this.groundContacts = 0;
     this.isTouchingLine = false;
@@ -413,7 +416,10 @@ export class PhysicsWorld {
       return;
     }
 
-    // 3. Speed & forward momentum management
+    // 3. Time-dependent Speed & Forward Momentum Management
+    this.runTicks++;
+    const elapsedSeconds = this.runTicks / 60;
+
     const isBoosting = this.boostTicksRemaining > 0;
     this.stats.isBoosting = isBoosting;
 
@@ -421,13 +427,15 @@ export class PhysicsWorld {
       this.boostTicksRemaining--;
     }
 
+    // Time-based acceleration curve:
+    // Starts at GameConfig.BASE_SPEED_X (5.2) and accelerates tangibly over time (+0.12/s)
     const currentBase = Math.min(
       GameConfig.MAX_SPEED_X,
-      GameConfig.BASE_SPEED_X + this.stats.score * GameConfig.ACCELERATION_RATE
+      GameConfig.BASE_SPEED_X + elapsedSeconds * GameConfig.SPEED_INCREASE_PER_SECOND
     );
 
     const targetSpeed = isBoosting
-      ? currentBase * GameConfig.BOOST_SPEED_MULTIPLIER
+      ? Math.min(GameConfig.MAX_SPEED_X * 1.35, currentBase * GameConfig.BOOST_SPEED_MULTIPLIER)
       : currentBase;
 
     this.stats.speed = targetSpeed;
