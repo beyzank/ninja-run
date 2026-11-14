@@ -56,9 +56,9 @@ export class PhysicsWorld {
   };
 
   public isDrawing = false;
-
   private boostTicksRemaining = 0;
   private isTouchingLine = false;
+  private groundContacts = 0;
   private ninjaRunCycle = 0;
   private stuckTicks = 0;
   private smoothedAngle = 0;
@@ -75,8 +75,8 @@ export class PhysicsWorld {
 
     this.engine = Matter.Engine.create({
       gravity: { x: 0, y: GameConfig.GRAVITY_Y, scale: 0.0016 },
-      positionIterations: 8,
-      velocityIterations: 8,
+      positionIterations: 6,
+      velocityIterations: 6,
     });
     this.world = this.engine.world;
 
@@ -95,9 +95,11 @@ export class PhysicsWorld {
     this.cameraX = 0;
     this.boostTicksRemaining = 0;
     this.isTouchingLine = false;
+    this.groundContacts = 0;
     this.ninjaRunCycle = 0;
     this.stuckTicks = 0;
     this.smoothedAngle = 0;
+    this.isDrawing = false;
 
     // Reset stats
     this.stats = {
@@ -119,43 +121,60 @@ export class PhysicsWorld {
   }
 
   private spawnNinja(x: number, y: number): void {
-    this.ninjaBody = Matter.Bodies.rectangle(
-      x,
-      y,
-      GameConfig.NINJA_WIDTH,
-      GameConfig.NINJA_HEIGHT,
-      {
-        chamfer: { radius: 10 },
-        friction: GameConfig.NINJA_FRICTION,
-        frictionAir: 0.001,
-        restitution: GameConfig.NINJA_RESTITUTION,
-        collisionFilter: {
-          category: CollisionCategory.NINJA,
-          mask:
-            CollisionCategory.DRAWN_LINE |
-            CollisionCategory.GROUND |
-            CollisionCategory.OBSTACLE |
-            CollisionCategory.COLLECTIBLE |
-            CollisionCategory.BOOSTER,
-        },
-        label: 'ninja',
-      }
-    );
+    // Compound Capsule Collider with rounded foot circle
+    // Pure circular bottom prevents any ghost edge catching on line seams!
+    const r = 13;
+    const footCircle = Matter.Bodies.circle(x, y + 10, r, {
+      friction: 0.001,
+      restitution: 0.04,
+      label: 'ninja',
+    });
+    const headCircle = Matter.Bodies.circle(x, y - 10, r, {
+      friction: 0.001,
+      restitution: 0.04,
+      label: 'ninja',
+    });
+    const bodyBox = Matter.Bodies.rectangle(x, y, r * 2, 20, {
+      friction: 0.001,
+      restitution: 0.04,
+      label: 'ninja',
+    });
 
-    // Lock upright orientation to prevent tipping on line seams
+    this.ninjaBody = Matter.Body.create({
+      parts: [bodyBox, footCircle, headCircle],
+      friction: 0.001,
+      frictionAir: 0.001,
+      restitution: 0.04,
+      collisionFilter: {
+        category: CollisionCategory.NINJA,
+        mask:
+          CollisionCategory.DRAWN_LINE |
+          CollisionCategory.GROUND |
+          CollisionCategory.OBSTACLE |
+          CollisionCategory.COLLECTIBLE |
+          CollisionCategory.BOOSTER,
+      },
+      label: 'ninja',
+    });
+
+    // Lock upright orientation
     Matter.Body.setInertia(this.ninjaBody, Infinity);
     Matter.Composite.add(this.world, this.ninjaBody);
   }
 
   private setupCollisionHandlers(): void {
+    const isNinja = (b: Matter.Body) =>
+      b.label === 'ninja' || b.parent?.label === 'ninja';
+
     Matter.Events.on(this.engine, 'collisionStart', (event) => {
       for (const pair of event.pairs) {
         const { bodyA, bodyB } = pair;
-        const other = bodyA.label === 'ninja' ? bodyB : bodyB.label === 'ninja' ? bodyA : null;
+        const other = isNinja(bodyA) ? bodyB : isNinja(bodyB) ? bodyA : null;
 
         if (!other) continue;
 
         if (other.label === 'drawn_segment' || other.label === 'starting_ground') {
+          this.groundContacts++;
           this.isTouchingLine = true;
           this.emitLandingSparks(this.ninjaBody.position.x, this.ninjaBody.position.y + 22);
         } else if (other.label === 'laser' || other.label === 'spike') {
@@ -173,11 +192,13 @@ export class PhysicsWorld {
     Matter.Events.on(this.engine, 'collisionEnd', (event) => {
       for (const pair of event.pairs) {
         const { bodyA, bodyB } = pair;
-        if (
-          (bodyA.label === 'ninja' && (bodyB.label === 'drawn_segment' || bodyB.label === 'starting_ground')) ||
-          (bodyB.label === 'ninja' && (bodyA.label === 'drawn_segment' || bodyA.label === 'starting_ground'))
-        ) {
-          this.isTouchingLine = false;
+        const other = isNinja(bodyA) ? bodyB : isNinja(bodyB) ? bodyA : null;
+
+        if (!other) continue;
+
+        if (other.label === 'drawn_segment' || other.label === 'starting_ground') {
+          this.groundContacts = Math.max(0, this.groundContacts - 1);
+          this.isTouchingLine = this.groundContacts > 0;
         }
       }
     });
@@ -230,7 +251,6 @@ export class PhysicsWorld {
 
   private triggerGameOver(): void {
     if (this.stats.isBoosting) {
-      // Shield saves once if boosting!
       this.boostTicksRemaining = 0;
       this.stats.isBoosting = false;
       HapticManager.heavy();
@@ -285,26 +305,26 @@ export class PhysicsWorld {
 
     this.stats.speed = targetSpeed;
 
-    // Apply thrust to keep ninja moving rightward at target speed
+    // Decisive Forward Motor Drive:
+    // Ensures ninja never stalls on slope transitions or segment joints!
     if (this.ninjaBody.velocity.x < targetSpeed) {
       Matter.Body.setVelocity(this.ninjaBody, {
-        x: Math.min(this.ninjaBody.velocity.x + 0.35, targetSpeed),
+        x: targetSpeed,
         y: this.ninjaBody.velocity.y,
       });
     }
 
-    // Stuck detection & auto-rescue: if ninja is trapped or blocked
-    if (this.isTouchingLine && Math.abs(this.ninjaBody.velocity.x) < 0.6) {
+    // Instant Stuck Auto-Hop:
+    // If progress is blocked by a steep wall for > 0.5s (30 frames), hop over it!
+    if (Math.abs(this.ninjaBody.velocity.x) < 0.8) {
       this.stuckTicks++;
-      // After 1s stuck: give an unstuck leap over the obstacle
-      if (this.stuckTicks === 60) {
+      if (this.stuckTicks === 30) {
         Matter.Body.setVelocity(this.ninjaBody, {
-          x: targetSpeed * 0.9,
-          y: -5.5,
+          x: targetSpeed * 1.1,
+          y: -6.0,
         });
       }
-      // If permanently trapped in a pit after 2.5s, trigger game over so player isn't stuck forever
-      if (this.stuckTicks > 150) {
+      if (this.stuckTicks > 120) {
         this.triggerGameOver();
         return;
       }
@@ -316,7 +336,7 @@ export class PhysicsWorld {
     this.stats.distance = Math.floor(this.ninjaBody.position.x);
     this.stats.score = Math.max(this.stats.score, Math.floor(this.stats.distance / 10));
 
-    // 5. Camera follow system (keeps ninja at ~28% of screen)
+    // 5. Camera follow system (smooth lookahead)
     const targetCameraX = this.ninjaBody.position.x - this.screenWidth * GameConfig.CAMERA_LOOKAHEAD_RATIO;
     this.cameraX += (targetCameraX - this.cameraX) * 0.12;
 
@@ -351,10 +371,21 @@ export class PhysicsWorld {
   private cleanupOffscreenLines(): void {
     const despawnX = this.cameraX - GameConfig.DESPAWN_OFFSET_X;
 
+    // 1. Immediately remove offscreen segments from Matter world
+    for (const line of this.lines) {
+      line.segments = line.segments.filter((seg) => {
+        if (Math.max(seg.p1.x, seg.p2.x) < despawnX) {
+          Matter.Composite.remove(this.world, seg.body);
+          return false;
+        }
+        return true;
+      });
+    }
+
+    // 2. Retain only lines that still have visible points
     this.lines = this.lines.filter((line) => {
-      // Check if all points of line are behind despawn threshold
-      const isOffscreen = line.points.every((p) => p.x < despawnX);
-      if (isOffscreen) {
+      const hasVisible = line.points.some((p) => p.x >= despawnX);
+      if (!hasVisible) {
         for (const seg of line.segments) {
           Matter.Composite.remove(this.world, seg.body);
         }
@@ -362,6 +393,16 @@ export class PhysicsWorld {
       }
       return true;
     });
+
+    // 3. Strictly bound total line history to prevent memory leaks
+    while (this.lines.length > GameConfig.MAX_ACTIVE_LINES) {
+      const oldest = this.lines.shift();
+      if (oldest) {
+        for (const seg of oldest.segments) {
+          Matter.Composite.remove(this.world, seg.body);
+        }
+      }
+    }
   }
 
   getNinjaState(): NinjaState {
@@ -377,31 +418,31 @@ export class PhysicsWorld {
     };
   }
 
-  // Particle Emitters
+  // Lightweight Particle Emitters (Zero GC Churn)
   emitDrawSparks(worldX: number, worldY: number, color: string): void {
-    for (let i = 0; i < 3; i++) {
-      this.particles.push({
-        x: worldX,
-        y: worldY,
-        vx: (Math.random() - 0.5) * 4,
-        vy: (Math.random() - 0.5) * 4,
-        life: 1,
-        maxLife: 20,
-        size: Math.random() * 3 + 2,
-        color,
-      });
-    }
+    if (this.particles.length >= GameConfig.MAX_PARTICLES) return;
+    this.particles.push({
+      x: worldX,
+      y: worldY,
+      vx: (Math.random() - 0.5) * 3,
+      vy: (Math.random() - 0.5) * 3,
+      life: 1,
+      maxLife: 14,
+      size: Math.random() * 2 + 1.5,
+      color,
+    });
   }
 
   private emitLandingSparks(x: number, y: number): void {
-    for (let i = 0; i < 4; i++) {
+    if (this.particles.length >= GameConfig.MAX_PARTICLES) return;
+    for (let i = 0; i < 2; i++) {
       this.particles.push({
         x,
         y,
         vx: (Math.random() - 0.8) * 3,
         vy: -Math.random() * 2,
         life: 1,
-        maxLife: 15,
+        maxLife: 12,
         size: 2,
         color: '#00F0FF',
       });
@@ -409,9 +450,64 @@ export class PhysicsWorld {
   }
 
   private emitInkSplash(x: number, y: number): void {
-    for (let i = 0; i < 14; i++) {
+    const count = Math.min(8, GameConfig.MAX_PARTICLES - this.particles.length);
+    for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
-      const spd = Math.random() * 5 + 2;
+      const spd = Math.random() * 4 + 2;
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * spd,
+        vy: Math.sin(angle) * spd,
+        life: 1,
+        maxLife: 20,
+        size: Math.random() * 3 + 2,
+        color: '#00F0FF',
+      });
+    }
+  }
+
+  private emitCoinGlow(x: number, y: number): void {
+    const count = Math.min(6, GameConfig.MAX_PARTICLES - this.particles.length);
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const spd = Math.random() * 3 + 1;
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * spd,
+        vy: Math.sin(angle) * spd,
+        life: 1,
+        maxLife: 18,
+        size: Math.random() * 2.5 + 1.5,
+        color: '#FFE600',
+      });
+    }
+  }
+
+  private emitSonicBoom(x: number, y: number): void {
+    const count = Math.min(10, GameConfig.MAX_PARTICLES - this.particles.length);
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const spd = Math.random() * 6 + 2;
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * spd,
+        vy: Math.sin(angle) * spd,
+        life: 1,
+        maxLife: 22,
+        size: Math.random() * 3.5 + 2,
+        color: '#FF007F',
+      });
+    }
+  }
+
+  private emitCrashDebris(x: number, y: number): void {
+    const count = Math.min(14, GameConfig.MAX_PARTICLES - this.particles.length);
+    for (let i = 0; i < count; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const spd = Math.random() * 6 + 2;
       this.particles.push({
         x,
         y,
@@ -419,58 +515,7 @@ export class PhysicsWorld {
         vy: Math.sin(angle) * spd,
         life: 1,
         maxLife: 30,
-        size: Math.random() * 4 + 3,
-        color: '#00F0FF',
-      });
-    }
-  }
-
-  private emitCoinGlow(x: number, y: number): void {
-    for (let i = 0; i < 10; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const spd = Math.random() * 4 + 1;
-      this.particles.push({
-        x,
-        y,
-        vx: Math.cos(angle) * spd,
-        vy: Math.sin(angle) * spd,
-        life: 1,
-        maxLife: 25,
-        size: Math.random() * 3 + 2,
-        color: '#FFE600',
-      });
-    }
-  }
-
-  private emitSonicBoom(x: number, y: number): void {
-    for (let i = 0; i < 20; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const spd = Math.random() * 8 + 3;
-      this.particles.push({
-        x,
-        y,
-        vx: Math.cos(angle) * spd,
-        vy: Math.sin(angle) * spd,
-        life: 1,
-        maxLife: 35,
-        size: Math.random() * 5 + 3,
-        color: '#FF007F',
-      });
-    }
-  }
-
-  private emitCrashDebris(x: number, y: number): void {
-    for (let i = 0; i < 30; i++) {
-      const angle = Math.random() * Math.PI * 2;
-      const spd = Math.random() * 9 + 2;
-      this.particles.push({
-        x,
-        y,
-        vx: Math.cos(angle) * spd,
-        vy: Math.sin(angle) * spd,
-        life: 1,
-        maxLife: 45,
-        size: Math.random() * 6 + 2,
+        size: Math.random() * 4 + 2,
         color: i % 2 === 0 ? '#FF1744' : '#00F0FF',
       });
     }
@@ -481,7 +526,7 @@ export class PhysicsWorld {
       p.x += p.vx;
       p.y += p.vy;
       p.life++;
-      p.size = Math.max(0, p.size * 0.96);
+      p.size = Math.max(0, p.size * 0.94);
       return p.life < p.maxLife;
     });
   }

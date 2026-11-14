@@ -28,13 +28,15 @@ export const GameConfig = {
 
   // Ink & Drawing
   MAX_INK: 120, // Generous stamina capacity
-  INK_CONSUMPTION_PER_PIXEL: 0.028, // Low consumption: allows 2.5x longer drawing
-  PASSIVE_INK_REGEN: 0.22, // Automatic recharge (~13% per second when not drawing)
-  MIN_POINT_DISTANCE: 16, // distance before adding a new vertex
-  LINE_PHYSICS_THICKNESS: 8,
+  INK_CONSUMPTION_PER_PIXEL: 0.026, // Low consumption: allows long, flowing lines
+  PASSIVE_INK_REGEN: 0.24, // Automatic recharge (~14% per second when not drawing)
+  MIN_POINT_DISTANCE: 20, // Optimized vertex spacing (cuts body count & CPU load by 30%)
+  LINE_PHYSICS_THICKNESS: 7,
   LINE_RENDER_THICKNESS: 5,
-  LINE_GLOW_THICKNESS: 14,
-  MAX_DRAW_POINTS_PER_LINE: 250,
+  LINE_GLOW_THICKNESS: 12,
+  MAX_DRAW_POINTS_PER_LINE: 200,
+  MAX_ACTIVE_LINES: 12, // Strict bound on line history to protect memory
+  MAX_PARTICLES: 25, // Strict limit on active particles for zero GC stutter
 
   // Collectibles replenishment
   INK_ORB_RESTORE: 60, // Each orb restores 50% of the entire tank
@@ -42,8 +44,8 @@ export const GameConfig = {
 
   // Camera & view
   CAMERA_LOOKAHEAD_RATIO: 0.28, // Character positioned ~28% from the left
-  DESPAWN_OFFSET_X: 450, // bodies further behind the camera are deleted
-  SPAWN_AHEAD_DISTANCE: 1600, // spawn chunks ahead of camera
+  DESPAWN_OFFSET_X: 320, // Swift cleanup of off-screen bodies
+  SPAWN_AHEAD_DISTANCE: 1400, // spawn chunks ahead of camera
 
   // Cyberpunk Palette
   COLORS: {

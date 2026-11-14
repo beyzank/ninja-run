@@ -209,14 +209,20 @@ export default function GameScreen() {
       }
 
       if (result.blocked) {
-        physics.isDrawing = false;
-        SoundManager.stopDrawingSound();
-        SoundManager.playDeny();
-        HapticManager.warning();
-        const line = physics.lineManager.finishLine();
-        if (line) {
-          physics.lines.push(line);
+        if (physics.isDrawing) {
+          physics.isDrawing = false;
+          SoundManager.stopDrawingSound();
+          SoundManager.playDeny();
+          HapticManager.warning();
+          const line = physics.lineManager.finishLine();
+          if (line) {
+            physics.lines.push(line);
+          }
         }
+      } else if (!physics.isDrawing) {
+        physics.isDrawing = true;
+        isDrawingRef.current = true;
+        SoundManager.startDrawingSound();
       }
     })
     .onEnd(() => {

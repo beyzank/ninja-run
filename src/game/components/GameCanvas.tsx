@@ -194,39 +194,46 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         ))}
 
         {/* Drawn Lines - Multi-Stroke Neon (Super fast & ultra crisp) */}
-        {lines.map((line) => (
-          <Group key={line.id}>
-            {/* 1. Outer Neon Aura */}
-            <Path
-              path={line.skPath}
-              style="stroke"
-              strokeWidth={GameConfig.LINE_GLOW_THICKNESS}
-              color={trailStyle.glowColor}
-              opacity={0.3}
-              strokeCap="round"
-              strokeJoin="round"
-            />
-            {/* 2. Vibrant Mid Stroke */}
-            <Path
-              path={line.skPath}
-              style="stroke"
-              strokeWidth={GameConfig.LINE_RENDER_THICKNESS + 2}
-              color={trailStyle.primaryColor}
-              opacity={0.8}
-              strokeCap="round"
-              strokeJoin="round"
-            />
-            {/* 3. Razor Sharp Core */}
-            <Path
-              path={line.skPath}
-              style="stroke"
-              strokeWidth={2.5}
-              color="#FFFFFF"
-              strokeCap="round"
-              strokeJoin="round"
-            />
-          </Group>
-        ))}
+        {lines.map((line) => {
+          // Fast AABB culling: skip drawing if line is completely behind the screen
+          if (line.points.length > 0) {
+            const lastP = line.points[line.points.length - 1];
+            if (lastP.x < cameraX - 50) return null;
+          }
+          return (
+            <Group key={line.id}>
+              {/* 1. Outer Neon Aura */}
+              <Path
+                path={line.skPath}
+                style="stroke"
+                strokeWidth={GameConfig.LINE_GLOW_THICKNESS}
+                color={trailStyle.glowColor}
+                opacity={0.3}
+                strokeCap="round"
+                strokeJoin="round"
+              />
+              {/* 2. Vibrant Mid Stroke */}
+              <Path
+                path={line.skPath}
+                style="stroke"
+                strokeWidth={GameConfig.LINE_RENDER_THICKNESS + 2}
+                color={trailStyle.primaryColor}
+                opacity={0.8}
+                strokeCap="round"
+                strokeJoin="round"
+              />
+              {/* 3. Razor Sharp Core */}
+              <Path
+                path={line.skPath}
+                style="stroke"
+                strokeWidth={2.5}
+                color="#FFFFFF"
+                strokeCap="round"
+                strokeJoin="round"
+              />
+            </Group>
+          );
+        })}
 
         {/* Active Line (currently being drawn) */}
         {activeLinePath && (

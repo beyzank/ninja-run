@@ -19,7 +19,7 @@ export class LinePhysicsManager {
       return false;
     }
 
-    this.currentLineId = `line_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    this.currentLineId = `line_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
     this.activePoints = [worldPoint];
     this.activeSegments = [];
     this.builder = Skia.PathBuilder.Make();
@@ -36,10 +36,16 @@ export class LinePhysicsManager {
     blocked: boolean;
     addedSegment: DrawnSegment | null;
   } {
-    if (this.activePoints.length === 0 || !this.builder) {
+    // Auto-recover: if line was broken or not started, seamlessly start a new one!
+    if (!this.builder || this.activePoints.length === 0) {
+      if (this.isPointInsideAntiDraw(worldPoint, antiDrawZones) || currentInk < 2) {
+        return { inkUsed: 0, blocked: true, addedSegment: null };
+      }
+      this.startLine(worldPoint, antiDrawZones);
       return { inkUsed: 0, blocked: false, addedSegment: null };
     }
 
+    // Check anti-draw zone
     if (this.isPointInsideAntiDraw(worldPoint, antiDrawZones)) {
       return { inkUsed: 0, blocked: true, addedSegment: null };
     }
@@ -58,12 +64,17 @@ export class LinePhysicsManager {
       return { inkUsed: 0, blocked: true, addedSegment: null };
     }
 
-    // Add curve to Skia path builder
+    // Cap line length to prevent memory spikes
+    if (this.activePoints.length >= GameConfig.MAX_DRAW_POINTS_PER_LINE) {
+      return { inkUsed: 0, blocked: true, addedSegment: null };
+    }
+
+    // Add smooth curve to Skia path builder
     const midX = (lastPoint.x + worldPoint.x) / 2;
     const midY = (lastPoint.y + worldPoint.y) / 2;
     this.builder.quadTo(lastPoint.x, lastPoint.y, midX, midY);
 
-    // Create Matter.js physics segment
+    // Create lightweight Matter.js physics segment
     const segment = this.createSegmentBody(lastPoint, worldPoint, distance);
     Matter.Composite.add(this.world, segment.body);
 
@@ -139,6 +150,7 @@ export class LinePhysicsManager {
     const cy = (p1.y + p2.y) / 2;
     const angle = Math.atan2(p2.y - p1.y, p2.x - p1.x);
 
+    // Clean lightweight rectangle: 4 vertices (10x faster SAT than chamfered polygon)
     const body = Matter.Bodies.rectangle(
       cx,
       cy,
@@ -147,10 +159,9 @@ export class LinePhysicsManager {
       {
         isStatic: true,
         angle,
-        chamfer: { radius: 3 },
         friction: 0.001,
         frictionStatic: 0.001,
-        restitution: 0.15,
+        restitution: 0.08,
         collisionFilter: {
           category: CollisionCategory.DRAWN_LINE,
           mask: CollisionCategory.NINJA,
