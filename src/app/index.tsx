@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   StyleSheet,
+  Text,
   useWindowDimensions,
   View,
 } from 'react-native';
@@ -10,6 +11,7 @@ import { AdModal } from '../game/components/AdModal';
 import { GameCanvas } from '../game/components/GameCanvas';
 import { GameOverOverlay } from '../game/components/GameOverOverlay';
 import { HUD } from '../game/components/HUD';
+import { MissionsModal } from '../game/components/MissionsModal';
 import { ShopModal } from '../game/components/ShopModal';
 import { StartOverlay } from '../game/components/StartOverlay';
 import { INITIAL_SKINS, INITIAL_TRAILS } from '../game/config/Cosmetics';
@@ -38,6 +40,7 @@ export default function GameScreen() {
   // Game UI States
   const [status, setStatus] = useState<GameStatus>('idle');
   const [isShopOpen, setIsShopOpen] = useState(false);
+  const [isMissionsOpen, setIsMissionsOpen] = useState(false);
   const [shopInitialTab, setShopInitialTab] = useState<'trails' | 'skins' | 'iap'>('trails');
   const [lastRunCoins, setLastRunCoins] = useState(0);
   const [canReviveThisRun, setCanReviveThisRun] = useState(true);
@@ -64,6 +67,9 @@ export default function GameScreen() {
     maxInk: 100,
     speed: 5.8,
     isBoosting: false,
+    combo: 0,
+    comboMultiplier: 1,
+    comboTimerRatio: 0,
   });
 
   // Physics World Instance Ref
@@ -246,6 +252,7 @@ export default function GameScreen() {
       if (result.inkUsed > 0) {
         physics.stats.ink = Math.max(0, physics.stats.ink - result.inkUsed);
         physics.emitDrawSparks(worldPoint.x, worldPoint.y, activeTrail.sparkColor);
+        GameStorage.updateMissionProgress('draw_distance', result.inkUsed * 3);
       }
 
       if (result.blocked) {
@@ -314,6 +321,8 @@ export default function GameScreen() {
             width={width}
             height={height}
             cameraX={physics?.cameraX || 0}
+            shakeX={physics?.shakeX || 0}
+            shakeY={physics?.shakeY || 0}
             ninja={ninjaState}
             lines={physics?.lines || []}
             activeLinePath={activePath}
@@ -329,6 +338,48 @@ export default function GameScreen() {
             ninjaSkin={activeSkin}
             isBoosting={hudStats.isBoosting}
           />
+
+          {/* Floating Juicy Text Popups (Combos, Gems, Sonic Boom) */}
+          {physics &&
+            physics.floatingTexts.map((ft) => {
+              const screenX = ft.x - physics.cameraX + physics.shakeX;
+              const screenY = ft.y + physics.shakeY;
+              if (screenX < -120 || screenX > width + 120) return null;
+              const progress = ft.life / ft.maxLife;
+
+              return (
+                <View
+                  key={ft.id}
+                  pointerEvents="none"
+                  style={{
+                    position: 'absolute',
+                    left: screenX - 90,
+                    top: screenY - 20,
+                    width: 180,
+                    alignItems: 'center',
+                    opacity: Math.max(0, 1 - progress * 1.15),
+                    transform: [{ scale: 1 + progress * 0.2 }],
+                  }}
+                >
+                  <Text
+                    style={{
+                      color: ft.color,
+                      fontSize:
+                        ft.text.includes('x5') || ft.text.includes('SÜPERSONİK')
+                          ? 15
+                          : 13,
+                      fontWeight: '900',
+                      letterSpacing: 0.8,
+                      textShadowColor: ft.color,
+                      textShadowOffset: { width: 0, height: 0 },
+                      textShadowRadius: 8,
+                    }}
+                  >
+                    {ft.text}
+                  </Text>
+                </View>
+              );
+            })}
         </View>
       </GestureDetector>
 
@@ -352,6 +403,8 @@ export default function GameScreen() {
           soundEnabled={soundEnabled}
           onStart={handleStart}
           onOpenShop={() => handleOpenShop('trails')}
+          onOpenMissions={() => setIsMissionsOpen(true)}
+          hasUnclaimedMissions={GameStorage.hasUnclaimedMissions()}
           onToggleSound={handleToggleSound}
         />
       )}
@@ -366,6 +419,8 @@ export default function GameScreen() {
           distance={hudStats.distance}
           onRestart={handleRestart}
           onOpenShop={() => handleOpenShop('trails')}
+          onOpenMissions={() => setIsMissionsOpen(true)}
+          hasUnclaimedMissions={GameStorage.hasUnclaimedMissions()}
           onWatchAdCoins={handleWatchAdCoins}
           onWatchAdRevive={handleWatchAdRevive}
           canRevive={canReviveThisRun}
@@ -384,6 +439,13 @@ export default function GameScreen() {
         onSelectSkin={(s) => setActiveSkin(s)}
         initialTab={shopInitialTab}
         onWatchAdForCoins={handleWatchAdCoins}
+      />
+
+      {/* Daily Missions Modal */}
+      <MissionsModal
+        visible={isMissionsOpen}
+        onClose={() => setIsMissionsOpen(false)}
+        onCoinsUpdated={(newCoins) => setCoins(newCoins)}
       />
 
       {/* Ad Modal (Full-Screen Interstitial or Rewarded Ad) */}

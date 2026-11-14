@@ -8,6 +8,8 @@ interface StartOverlayProps {
   soundEnabled: boolean;
   onStart: () => void;
   onOpenShop: () => void;
+  onOpenMissions: () => void;
+  hasUnclaimedMissions?: boolean;
   onToggleSound: () => void;
 }
 
@@ -17,6 +19,8 @@ export const StartOverlay: React.FC<StartOverlayProps> = ({
   soundEnabled,
   onStart,
   onOpenShop,
+  onOpenMissions,
+  hasUnclaimedMissions = false,
   onToggleSound,
 }) => {
   return (
@@ -80,14 +84,26 @@ export const StartOverlay: React.FC<StartOverlayProps> = ({
           <Text style={styles.startButtonText}>BAŞLA</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity
-          style={styles.shopButton}
-          onPress={onOpenShop}
-          activeOpacity={0.8}
-        >
-          <ShopIcon size={18} color="#00F0FF" />
-          <Text style={styles.shopButtonText}>MARKET & ÖZELLEŞTİR</Text>
-        </TouchableOpacity>
+        <View style={styles.subActionRow}>
+          <TouchableOpacity
+            style={styles.subButton}
+            onPress={onOpenShop}
+            activeOpacity={0.8}
+          >
+            <ShopIcon size={16} color="#00F0FF" />
+            <Text style={styles.subButtonText}>MARKET</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.subButton}
+            onPress={onOpenMissions}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.subButtonEmoji}>🎯</Text>
+            <Text style={styles.subButtonText}>GÖREVLER</Text>
+            {hasUnclaimedMissions && <View style={styles.notificationDot} />}
+          </TouchableOpacity>
+        </View>
       </View>
     </View>
   );
@@ -243,21 +259,40 @@ const styles = StyleSheet.create({
     color: '#070714',
     marginLeft: 8,
   },
-  shopButton: {
-    backgroundColor: 'rgba(0, 240, 255, 0.1)',
+  subActionRow: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  subButton: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 240, 255, 0.08)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: 14,
     borderWidth: 1.5,
-    borderColor: 'rgba(0, 240, 255, 0.4)',
+    borderColor: 'rgba(0, 240, 255, 0.35)',
+    position: 'relative',
   },
-  shopButtonText: {
-    fontSize: 14,
+  subButtonEmoji: {
+    fontSize: 15,
+  },
+  subButtonText: {
+    fontSize: 13,
     fontWeight: '800',
-    letterSpacing: 1.5,
+    letterSpacing: 1,
     color: '#00F0FF',
-    marginLeft: 8,
+    marginLeft: 6,
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#FF1744',
   },
 });

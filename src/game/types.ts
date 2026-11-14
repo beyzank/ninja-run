@@ -100,6 +100,32 @@ export interface NinjaSkin {
 
 export type GameStatus = 'idle' | 'playing' | 'paused' | 'game_over';
 
+export interface FloatingText {
+  id: string;
+  text: string;
+  x: number;
+  y: number;
+  color: string;
+  life: number;
+  maxLife: number;
+  scale: number;
+}
+
+export type MissionType = 'collect_ink' | 'draw_distance' | 'reach_distance' | 'combo_streak';
+
+export interface Mission {
+  id: string;
+  title: string;
+  description: string;
+  type: MissionType;
+  target: number;
+  progress: number;
+  rewardCoins: number;
+  completed: boolean;
+  claimed: boolean;
+  icon: string;
+}
+
 export interface GameStats {
   score: number;
   highScore: number;
@@ -109,4 +135,7 @@ export interface GameStats {
   maxInk: number;
   speed: number;
   isBoosting: boolean;
+  combo: number;
+  comboMultiplier: number;
+  comboTimerRatio: number;
 }

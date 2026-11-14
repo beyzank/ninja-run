@@ -2,9 +2,11 @@ import Matter from 'matter-js';
 import { CollisionCategory, GameConfig } from '../config/GameConfig';
 import { HapticManager } from '../haptics/HapticManager';
 import { SoundManager } from '../audio/SoundManager';
+import { GameStorage } from '../storage/GameStorage';
 import {
   CollectibleItem,
   DrawnLine,
+  FloatingText,
   GameStats,
   Particle,
   Point,
@@ -40,7 +42,10 @@ export class PhysicsWorld {
 
   public lines: DrawnLine[] = [];
   public particles: Particle[] = [];
+  public floatingTexts: FloatingText[] = [];
   public cameraX = 0;
+  public shakeX = 0;
+  public shakeY = 0;
   public screenWidth: number;
   public screenHeight: number;
 
@@ -53,9 +58,16 @@ export class PhysicsWorld {
     maxInk: GameConfig.MAX_INK,
     speed: GameConfig.BASE_SPEED_X,
     isBoosting: false,
+    combo: 0,
+    comboMultiplier: 1,
+    comboTimerRatio: 0,
   };
 
   public isDrawing = false;
+  private shakeMagnitude = 0;
+  private comboCount = 0;
+  private comboTimerTicks = 0;
+  private readonly COMBO_MAX_TICKS = 180;
   private boostTicksRemaining = 0;
   private isTouchingLine = false;
   private groundContacts = 0;
@@ -92,7 +104,13 @@ export class PhysicsWorld {
     // Reset lines
     this.lines = [];
     this.particles = [];
+    this.floatingTexts = [];
     this.cameraX = 0;
+    this.shakeX = 0;
+    this.shakeY = 0;
+    this.shakeMagnitude = 0;
+    this.comboCount = 0;
+    this.comboTimerTicks = 0;
     this.boostTicksRemaining = 0;
     this.isTouchingLine = false;
     this.groundContacts = 0;
@@ -111,6 +129,9 @@ export class PhysicsWorld {
       maxInk: GameConfig.MAX_INK,
       speed: GameConfig.BASE_SPEED_X,
       isBoosting: false,
+      combo: 0,
+      comboMultiplier: 1,
+      comboTimerRatio: 0,
     };
 
     // Create starting ground & level
@@ -243,17 +264,66 @@ export class PhysicsWorld {
     });
   }
 
+  triggerShake(intensity: number): void {
+    this.shakeMagnitude = Math.min(24, this.shakeMagnitude + intensity);
+  }
+
+  emitFloatingText(text: string, worldX: number, worldY: number, color: string): void {
+    if (this.floatingTexts.length >= 6) {
+      this.floatingTexts.shift();
+    }
+    this.floatingTexts.push({
+      id: Math.random().toString(36).slice(2, 7),
+      text,
+      x: worldX,
+      y: worldY,
+      color,
+      life: 0,
+      maxLife: 42,
+      scale: 1,
+    });
+  }
+
+  private getComboMultiplier(): number {
+    if (this.comboCount >= 10) return 5;
+    if (this.comboCount >= 7) return 4;
+    if (this.comboCount >= 4) return 3;
+    if (this.comboCount >= 2) return 2;
+    return 1;
+  }
+
   private handleCollectInk(body: Matter.Body): void {
     const item = this.levelState.collectibles.find((c) => c.body === body && !c.collected);
     if (!item) return;
 
     item.collected = true;
     this.stats.ink = Math.min(this.stats.maxInk, this.stats.ink + GameConfig.INK_ORB_RESTORE);
-    this.stats.score += 75;
+
+    // Combo processing
+    this.comboCount++;
+    this.comboTimerTicks = this.COMBO_MAX_TICKS;
+    const mult = this.getComboMultiplier();
+    const pts = 75 * mult;
+    this.stats.score += pts;
 
     SoundManager.playInkCollect();
     HapticManager.medium();
     this.emitInkSplash(item.x, item.y);
+
+    // Floating Combo Text
+    if (mult > 1) {
+      const label = mult === 5 ? '⚡ CYBER RUSH! x5' : `KOMBO x${mult}! +${pts}`;
+      this.emitFloatingText(label, item.x, item.y - 18, mult === 5 ? '#FFE600' : '#00F0FF');
+      if (mult >= 4) {
+        this.triggerShake(4);
+      }
+    }
+
+    // Daily Mission progress
+    GameStorage.updateMissionProgress('collect_ink', 1);
+    if (this.comboCount >= 5) {
+      GameStorage.updateMissionProgress('combo_streak', this.comboCount, true);
+    }
   }
 
   private handleCollectCoin(body: Matter.Body): void {
@@ -262,11 +332,22 @@ export class PhysicsWorld {
 
     item.collected = true;
     this.stats.coins += 1;
-    this.stats.score += 50;
+
+    // Combo processing
+    this.comboCount++;
+    this.comboTimerTicks = this.COMBO_MAX_TICKS;
+    const mult = this.getComboMultiplier();
+    const pts = 50 * mult;
+    this.stats.score += pts;
 
     SoundManager.playCoinCollect();
     HapticManager.light();
     this.emitCoinGlow(item.x, item.y);
+    this.emitFloatingText(mult > 1 ? `+1 ◆ (x${mult})` : '+1 ◆', item.x, item.y - 15, '#FFE600');
+
+    if (this.comboCount >= 5) {
+      GameStorage.updateMissionProgress('combo_streak', this.comboCount, true);
+    }
   }
 
   private handleBooster(body: Matter.Body): void {
@@ -275,7 +356,7 @@ export class PhysicsWorld {
 
     booster.collected = true;
     this.boostTicksRemaining = GameConfig.BOOST_DURATION_TICKS;
-    this.stats.score += 150;
+    this.stats.score += 200;
 
     // Direct impulse forward
     Matter.Body.setVelocity(this.ninjaBody, {
@@ -283,12 +364,19 @@ export class PhysicsWorld {
       y: Math.min(-4, this.ninjaBody.velocity.y - 4),
     });
 
+    this.triggerShake(12);
+    this.emitFloatingText('SÜPERSONİK PATLAMA!', booster.x, booster.y - 25, '#FF007F');
+
     SoundManager.playBooster();
     HapticManager.success();
     this.emitSonicBoom(booster.x + booster.radius, booster.y + booster.radius);
   }
 
   private triggerGameOver(): void {
+    this.triggerShake(20);
+    this.comboCount = 0;
+    this.comboTimerTicks = 0;
+
     if (this.stats.isBoosting) {
       this.boostTicksRemaining = 0;
       this.stats.isBoosting = false;
@@ -374,6 +462,40 @@ export class PhysicsWorld {
     // 4. Update distance & score
     this.stats.distance = Math.floor(this.ninjaBody.position.x);
     this.stats.score = Math.max(this.stats.score, Math.floor(this.stats.distance / 10));
+
+    // 4b. Mission Progress for Distance
+    if (this.stats.distance > 0 && this.stats.distance % 25 === 0) {
+      GameStorage.updateMissionProgress('reach_distance', this.stats.distance, true);
+    }
+
+    // 4c. Camera Screen Shake Calculation & Decay
+    if (this.shakeMagnitude > 0.25) {
+      this.shakeX = (Math.random() - 0.5) * this.shakeMagnitude * 1.8;
+      this.shakeY = (Math.random() - 0.5) * this.shakeMagnitude * 1.8;
+      this.shakeMagnitude *= 0.88;
+    } else {
+      this.shakeX = 0;
+      this.shakeY = 0;
+      this.shakeMagnitude = 0;
+    }
+
+    // 4d. Combo Decay & Stats Sync
+    if (this.comboTimerTicks > 0) {
+      this.comboTimerTicks--;
+      if (this.comboTimerTicks === 0) {
+        this.comboCount = 0;
+      }
+    }
+    this.stats.combo = this.comboCount;
+    this.stats.comboMultiplier = this.getComboMultiplier();
+    this.stats.comboTimerRatio = this.comboTimerTicks / this.COMBO_MAX_TICKS;
+
+    // 4e. Update Floating Texts
+    this.floatingTexts = this.floatingTexts.filter((ft) => {
+      ft.life++;
+      ft.y -= 1.1;
+      return ft.life < ft.maxLife;
+    });
 
     // 5. Camera follow system (smooth lookahead)
     const targetCameraX = this.ninjaBody.position.x - this.screenWidth * GameConfig.CAMERA_LOOKAHEAD_RATIO;

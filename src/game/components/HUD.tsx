@@ -60,6 +60,46 @@ export const HUD: React.FC<HUDProps> = ({
               <Text style={styles.coinIcon}>◆</Text>
               <Text style={styles.coinText}>{stats.coins}</Text>
             </View>
+
+            {/* Dynamic Combo & Multiplier Badge */}
+            {stats.combo >= 2 && (
+              <View style={styles.comboWrapper}>
+                <View
+                  style={[
+                    styles.comboBadge,
+                    stats.comboMultiplier >= 5 && styles.cyberRushBadge,
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.comboText,
+                      stats.comboMultiplier >= 5 && styles.cyberRushText,
+                    ]}
+                  >
+                    {stats.comboMultiplier >= 5
+                      ? '⚡ CYBER RUSH x5'
+                      : `KOMBO x${stats.comboMultiplier}`}
+                  </Text>
+                  <Text style={styles.comboStreakText}>{stats.combo}x</Text>
+                </View>
+                {/* Countdown line */}
+                <View style={styles.comboTimerTrack}>
+                  <View
+                    style={[
+                      styles.comboTimerFill,
+                      {
+                        width: `${Math.max(
+                          0,
+                          Math.min(100, (stats.comboTimerRatio || 0) * 100)
+                        )}%`,
+                        backgroundColor:
+                          stats.comboMultiplier >= 5 ? '#FFE600' : '#00F0FF',
+                      },
+                    ]}
+                  />
+                </View>
+              </View>
+            )}
           </View>
 
           {/* Top Right Buttons: Instant Restart & Pause */}
@@ -232,6 +272,59 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
     color: '#FFE600',
+  },
+  comboWrapper: {
+    marginTop: 4,
+    alignItems: 'center',
+    width: 130,
+  },
+  comboBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 240, 255, 0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 240, 255, 0.45)',
+    gap: 5,
+  },
+  cyberRushBadge: {
+    backgroundColor: 'rgba(255, 230, 0, 0.2)',
+    borderColor: '#FFE600',
+    shadowColor: '#FFE600',
+    shadowOpacity: 0.8,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  comboText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#00F0FF',
+    letterSpacing: 0.5,
+  },
+  cyberRushText: {
+    color: '#FFE600',
+  },
+  comboStreakText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    backgroundColor: 'rgba(255, 255, 255, 0.15)',
+    paddingHorizontal: 4,
+    borderRadius: 4,
+  },
+  comboTimerTrack: {
+    width: '100%',
+    height: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.1)',
+    borderRadius: 1.5,
+    marginTop: 3,
+    overflow: 'hidden',
+  },
+  comboTimerFill: {
+    height: '100%',
+    borderRadius: 1.5,
   },
   topActions: {
     flexDirection: 'row',

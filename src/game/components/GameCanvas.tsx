@@ -25,6 +25,8 @@ interface GameCanvasProps {
   width: number;
   height: number;
   cameraX: number;
+  shakeX?: number;
+  shakeY?: number;
   ninja: NinjaState;
   lines: DrawnLine[];
   activeLinePath: any;
@@ -45,6 +47,8 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
   width,
   height,
   cameraX,
+  shakeX = 0,
+  shakeY = 0,
   ninja,
   lines,
   activeLinePath,
@@ -116,8 +120,13 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         })}
       </Group>
 
-      {/* 2. World Space Elements (Shifted by cameraX) */}
-      <Group transform={[{ translateX: -cameraX }]}>
+      {/* 2. World Space Elements (Shifted by cameraX and Screen Shake) */}
+      <Group
+        transform={[
+          { translateX: -cameraX + shakeX },
+          { translateY: shakeY },
+        ]}
+      >
         {/* Initial Safety Ground */}
         {groundBodies.map((gb, i) => {
           const w = gb.customWidth || 1400;

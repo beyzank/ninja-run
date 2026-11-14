@@ -10,6 +10,8 @@ interface GameOverOverlayProps {
   distance: number;
   onRestart: () => void;
   onOpenShop: () => void;
+  onOpenMissions?: () => void;
+  hasUnclaimedMissions?: boolean;
   onWatchAdCoins: () => void;
   onWatchAdRevive?: () => void;
   canRevive?: boolean;
@@ -22,6 +24,8 @@ export const GameOverOverlay: React.FC<GameOverOverlayProps> = ({
   distance,
   onRestart,
   onOpenShop,
+  onOpenMissions,
+  hasUnclaimedMissions = false,
   onWatchAdCoins,
   onWatchAdRevive,
   canRevive = true,
@@ -112,18 +116,32 @@ export const GameOverOverlay: React.FC<GameOverOverlayProps> = ({
             onPress={onRestart}
             activeOpacity={0.8}
           >
-            <RestartIcon size={20} color="#070714" />
+            <RestartIcon size={18} color="#070714" />
             <Text style={styles.restartButtonText}>YENİDEN BAŞLA</Text>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.shopButton}
-            onPress={onOpenShop}
-            activeOpacity={0.8}
-          >
-            <ShopIcon size={18} color="#00F0FF" />
-            <Text style={styles.shopButtonText}>MARKETE GİT</Text>
-          </TouchableOpacity>
+          <View style={styles.subActionRow}>
+            <TouchableOpacity
+              style={styles.shopButton}
+              onPress={onOpenShop}
+              activeOpacity={0.8}
+            >
+              <ShopIcon size={15} color="#00F0FF" />
+              <Text style={styles.shopButtonText}>MARKET</Text>
+            </TouchableOpacity>
+
+            {onOpenMissions && (
+              <TouchableOpacity
+                style={styles.missionsButton}
+                onPress={onOpenMissions}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.missionsIcon}>🎯</Text>
+                <Text style={styles.missionsButtonText}>GÖREVLER</Text>
+                {hasUnclaimedMissions && <View style={styles.notificationDot} />}
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
     </View>
@@ -320,20 +338,57 @@ const styles = StyleSheet.create({
     color: '#070714',
   },
   shopButton: {
-    backgroundColor: 'rgba(0, 240, 255, 0.1)',
+    flex: 1,
+    backgroundColor: 'rgba(0, 240, 255, 0.08)',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 12,
+    paddingVertical: 11,
     borderRadius: 12,
     borderWidth: 1.5,
     borderColor: 'rgba(0, 240, 255, 0.35)',
-    gap: 8,
+    gap: 6,
   },
   shopButtonText: {
     fontSize: 12,
     fontWeight: '800',
-    letterSpacing: 1.2,
+    letterSpacing: 1,
     color: '#00F0FF',
+  },
+  subActionRow: {
+    flexDirection: 'row',
+    gap: 8,
+    width: '100%',
+  },
+  missionsButton: {
+    flex: 1,
+    backgroundColor: 'rgba(255, 230, 0, 0.08)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 11,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: 'rgba(255, 230, 0, 0.35)',
+    gap: 6,
+    position: 'relative',
+  },
+  missionsIcon: {
+    fontSize: 13,
+  },
+  missionsButtonText: {
+    fontSize: 12,
+    fontWeight: '800',
+    letterSpacing: 1,
+    color: '#FFE600',
+  },
+  notificationDot: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 7,
+    height: 7,
+    borderRadius: 3.5,
+    backgroundColor: '#FF1744',
   },
 });
