@@ -3,7 +3,7 @@
     "name": "neon-ink-ninja",
     "slug": "neon-ink-ninja",
     "version": "1.0.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "icon": "./assets/images/icon.png",
     "scheme": "neoninkninja",
     "userInterfaceStyle": "automatic",

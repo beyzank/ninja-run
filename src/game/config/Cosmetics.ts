@@ -1,0 +1,88 @@
+import { NinjaSkin, TrailStyle } from '../types';
+
+export const INITIAL_TRAILS: TrailStyle[] = [
+  {
+    id: 'cyber_cyan',
+    name: 'Cyber Cyan',
+    primaryColor: '#00F0FF',
+    glowColor: '#00C8FF',
+    sparkColor: '#E0FFFF',
+    price: 0,
+    unlocked: true,
+  },
+  {
+    id: 'synth_pink',
+    name: 'Synthwave Pink',
+    primaryColor: '#FF007F',
+    glowColor: '#FF2A6D',
+    sparkColor: '#FFE0F0',
+    price: 50,
+    unlocked: false,
+  },
+  {
+    id: 'solar_flare',
+    name: 'Solar Flare',
+    primaryColor: '#FF9100',
+    glowColor: '#FF3D00',
+    sparkColor: '#FFF3E0',
+    price: 120,
+    unlocked: false,
+  },
+  {
+    id: 'toxic_matrix',
+    name: 'Toxic Matrix',
+    primaryColor: '#00FF66',
+    glowColor: '#00CC52',
+    sparkColor: '#D4FFDF',
+    price: 200,
+    unlocked: false,
+  },
+  {
+    id: 'hyper_violet',
+    name: 'Hyper Violet',
+    primaryColor: '#9D00FF',
+    glowColor: '#B026FF',
+    sparkColor: '#F3E5FF',
+    price: 350,
+    unlocked: false,
+  },
+];
+
+export const INITIAL_SKINS: NinjaSkin[] = [
+  {
+    id: 'neon_shinobi',
+    name: 'Neon Shinobi',
+    accentColor: '#00F0FF',
+    suitColor: '#1A2238',
+    scarfColor: '#00F0FF',
+    price: 0,
+    unlocked: true,
+  },
+  {
+    id: 'cyber_ronin',
+    name: 'Cyber Ronin',
+    accentColor: '#FF007F',
+    suitColor: '#2D162C',
+    scarfColor: '#FF007F',
+    price: 100,
+    unlocked: false,
+  },
+  {
+    id: 'golden_sensei',
+    name: 'Golden Sensei',
+    accentColor: '#FFE600',
+    suitColor: '#302614',
+    scarfColor: '#FFE600',
+    price: 250,
+    unlocked: false,
+  },
+  {
+    id: 'ghost_phantom',
+    name: 'Ghost Phantom',
+    accentColor: '#FFFFFF',
+    suitColor: '#2C3545',
+    scarfColor: '#00F0FF',
+    price: 500,
+    unlocked: false,
+  },
+];
