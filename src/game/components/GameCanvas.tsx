@@ -178,7 +178,58 @@ const NEAR_BUILDINGS = [
   { x: 660, w: 115, h: 80 },
 ];
 
-export const GameCanvas: React.FC<GameCanvasProps> = ({
+// Pre-compile all city building bodies, trims, spires, and windows into high-performance SVG paths
+// Eliminates hundreds of React/Skia elements down to a single GPU draw call!
+const createCitySvgPaths = () => {
+  let farBodies = '';
+  let farSpires = '';
+  FAR_BUILDINGS.forEach((b) => {
+    farBodies += `M ${b.x} 0 h ${b.w} v ${-b.h} h ${-b.w} Z `;
+    const sx = b.x + b.w / 2 - 1;
+    farSpires += `M ${sx} ${-b.h} h 2 v ${-b.spireH} h -2 Z `;
+  });
+
+  let midBodies = '';
+  let midTrims = '';
+  let midWindowsCyan = '';
+  let midWindowsPink = '';
+  MID_BUILDINGS.forEach((b) => {
+    midBodies += `M ${b.x} 0 h ${b.w} v ${-b.h} h ${-b.w} Z `;
+    midTrims += `M ${b.x} ${-b.h} h ${b.w} v -3 h ${-b.w} Z `;
+    b.windows.forEach((w, wi) => {
+      const wx = b.x + w.x;
+      const wy = -b.h + w.y;
+      const rectStr = `M ${wx} ${wy} h 4 v 5 h -4 Z `;
+      if (wi % 3 === 0) {
+        midWindowsPink += rectStr;
+      } else {
+        midWindowsCyan += rectStr;
+      }
+    });
+  });
+
+  let nearBodies = '';
+  let nearRims = '';
+  NEAR_BUILDINGS.forEach((b) => {
+    nearBodies += `M ${b.x} 0 h ${b.w} v ${-b.h} h ${-b.w} Z `;
+    nearRims += `M ${b.x} ${-b.h} h ${b.w} v -2 h ${-b.w} Z `;
+  });
+
+  return {
+    farBodies,
+    farSpires,
+    midBodies,
+    midTrims,
+    midWindowsCyan,
+    midWindowsPink,
+    nearBodies,
+    nearRims,
+  };
+};
+
+const CITY_PATHS = createCitySvgPaths();
+
+export const GameCanvas = React.memo<GameCanvasProps>(({
   width,
   height,
   cameraX,
@@ -258,125 +309,67 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
         <Rect x={-45} y={35} width={90} height={8} color="#070714" />
       </Group>
 
-      {/* 3. Parallax Layer 1: Far Distance Megacity Silhouettes */}
+      {/* 3. Parallax Layer 1: Far Distance Megacity (Single Draw Call) */}
       {[0, FAR_WIDTH].map((layerShift, k) => (
-        <Group key={`far_layer_${k}`} transform={[{ translateX: farOffsetX + layerShift }]}>
-          {FAR_BUILDINGS.map((b, i) => (
-            <Group key={`far_b_${i}`}>
-              <Rect
-                x={b.x}
-                y={horizonY - b.h}
-                width={b.w}
-                height={b.h}
-                color="rgba(19, 12, 42, 0.88)"
-              />
-              {/* Antenna Spire */}
-              <Rect
-                x={b.x + b.w / 2 - 1}
-                y={horizonY - b.h - b.spireH}
-                width={2}
-                height={b.spireH}
-                color="rgba(19, 12, 42, 0.95)"
-              />
-              {/* Aircraft Beacon Light */}
-              <Circle
-                cx={b.x + b.w / 2}
-                cy={horizonY - b.h - b.spireH}
-                r={2}
-                color={i % 2 === 0 ? '#FF1744' : '#00F0FF'}
-              />
-            </Group>
-          ))}
+        <Group
+          key={`far_layer_${k}`}
+          transform={[
+            { translateX: farOffsetX + layerShift },
+            { translateY: horizonY },
+          ]}
+        >
+          <Path path={CITY_PATHS.farBodies} color="rgba(19, 12, 42, 0.88)" />
+          <Path path={CITY_PATHS.farSpires} color="rgba(19, 12, 42, 0.95)" />
         </Group>
       ))}
 
-      {/* 4. Parallax Layer 2: Mid-ground Skyscraper Skyline with Windows & Billboards */}
+      {/* 4. Parallax Layer 2: Mid-ground Skyscraper Skyline (Single Draw Call for All Windows) */}
       {[0, MID_WIDTH].map((layerShift, k) => (
-        <Group key={`mid_layer_${k}`} transform={[{ translateX: midOffsetX + layerShift }]}>
-          {MID_BUILDINGS.map((b, i) => (
-            <Group key={`mid_b_${i}`}>
-              {/* Building Body */}
-              <Rect
-                x={b.x}
-                y={horizonY - b.h}
-                width={b.w}
-                height={b.h}
-                color="#0E0F28"
-              />
-              {/* Roof Trim */}
-              <Rect
-                x={b.x}
-                y={horizonY - b.h}
-                width={b.w}
-                height={3}
-                color="#1E224D"
-              />
+        <Group
+          key={`mid_layer_${k}`}
+          transform={[
+            { translateX: midOffsetX + layerShift },
+            { translateY: horizonY },
+          ]}
+        >
+          <Path path={CITY_PATHS.midBodies} color="#0E0F28" />
+          <Path path={CITY_PATHS.midTrims} color="#1E224D" />
+          <Path path={CITY_PATHS.midWindowsCyan} color="rgba(0, 240, 255, 0.5)" />
+          <Path path={CITY_PATHS.midWindowsPink} color="rgba(255, 0, 127, 0.45)" />
 
-              {/* Holographic Billboard */}
-              {b.billboard && (
-                <Group>
-                  <Rect
-                    x={b.x + b.billboard.x}
-                    y={horizonY - b.h + b.billboard.y}
-                    width={b.billboard.w}
-                    height={b.billboard.h}
-                    color={`${b.billboard.color}22`}
-                  />
-                  <Rect
-                    x={b.x + b.billboard.x}
-                    y={horizonY - b.h + b.billboard.y}
-                    width={b.billboard.w}
-                    height={2}
-                    color={b.billboard.color}
-                  />
-                  <Rect
-                    x={b.x + b.billboard.x}
-                    y={horizonY - b.h + b.billboard.y + b.billboard.h - 2}
-                    width={b.billboard.w}
-                    height={2}
-                    color={b.billboard.color}
-                  />
-                </Group>
-              )}
-
-              {/* Glowing Cyber Windows */}
-              {b.windows.map((w, wi) => (
-                <Rect
-                  key={`win_${i}_${wi}`}
-                  x={b.x + w.x}
-                  y={horizonY - b.h + w.y}
-                  width={4}
-                  height={5}
-                  color={wi % 3 === 0 ? 'rgba(255, 0, 127, 0.45)' : 'rgba(0, 240, 255, 0.5)'}
-                />
-              ))}
+          {/* Holographic Billboards (Only 4 lightweight rects) */}
+          {MID_BUILDINGS.filter((b) => b.billboard).map((b, bi) => (
+            <Group key={`bb_${bi}`}>
+              <Rect
+                x={b.x + b.billboard!.x}
+                y={-b.h + b.billboard!.y}
+                width={b.billboard!.w}
+                height={b.billboard!.h}
+                color={`${b.billboard!.color}25`}
+              />
+              <Rect
+                x={b.x + b.billboard!.x}
+                y={-b.h + b.billboard!.y}
+                width={b.billboard!.w}
+                height={2}
+                color={b.billboard!.color}
+              />
             </Group>
           ))}
         </Group>
       ))}
 
-      {/* 5. Parallax Layer 3: Near Industrial Overpasses & Structures */}
+      {/* 5. Parallax Layer 3: Near Industrial Overpasses (Single Draw Call) */}
       {[0, NEAR_WIDTH].map((layerShift, k) => (
-        <Group key={`near_layer_${k}`} transform={[{ translateX: nearOffsetX + layerShift }]}>
-          {NEAR_BUILDINGS.map((b, i) => (
-            <Group key={`near_b_${i}`}>
-              <Rect
-                x={b.x}
-                y={horizonY - b.h}
-                width={b.w}
-                height={b.h}
-                color="#070817"
-              />
-              {/* Neon Rim Light on Top Edge */}
-              <Rect
-                x={b.x}
-                y={horizonY - b.h}
-                width={b.w}
-                height={2}
-                color="rgba(0, 240, 255, 0.4)"
-              />
-            </Group>
-          ))}
+        <Group
+          key={`near_layer_${k}`}
+          transform={[
+            { translateX: nearOffsetX + layerShift },
+            { translateY: horizonY },
+          ]}
+        >
+          <Path path={CITY_PATHS.nearBodies} color="#070817" />
+          <Path path={CITY_PATHS.nearRims} color="rgba(0, 240, 255, 0.4)" />
         </Group>
       ))}
 
@@ -888,4 +881,4 @@ export const GameCanvas: React.FC<GameCanvasProps> = ({
       </Group>
     </Canvas>
   );
-};
+});

@@ -121,18 +121,34 @@ export default function GameScreen() {
     return physicsRef.current;
   }, [width, height]);
 
-  // Main 60 FPS Game Loop
+  // Rock-solid 60 FPS Fixed-Timestep Physics Loop (Time-Accurate Runner)
   useEffect(() => {
     const physics = getPhysics();
     if (!physics) return;
 
     let isRunning = true;
+    let lastTime = Date.now();
+    let accumulator = 0;
+    const FIXED_STEP = 1000 / 60; // Exact 16.667ms physics tick
 
     const loop = () => {
       if (!isRunning) return;
 
+      const now = Date.now();
+      const delta = Math.min(100, now - lastTime);
+      lastTime = now;
+
       if (statusRef.current === 'playing') {
-        physics.update();
+        accumulator += delta;
+
+        // Execute physics steps to catch up with real-world time (Immune to framerate drops)
+        let subSteps = 0;
+        while (accumulator >= FIXED_STEP && subSteps < 3) {
+          physics.update();
+          accumulator -= FIXED_STEP;
+          subSteps++;
+        }
+
         frameCountRef.current++;
 
         // Throttle React HUD state updates to ~12 FPS to eliminate JS thread choking
@@ -147,6 +163,8 @@ export default function GameScreen() {
 
         // Advance canvas animation frame
         setRenderTick((t) => (t + 1) % 1000000);
+      } else {
+        accumulator = 0;
       }
 
       animFrameRef.current = requestAnimationFrame(loop);

@@ -191,14 +191,19 @@ export class PhysicsWorld {
 
     // Reset ninja position and physics
     Matter.Body.setPosition(this.ninjaBody, { x: rx, y: ry });
-    Matter.Body.setVelocity(this.ninjaBody, { x: GameConfig.BASE_SPEED_X, y: -2 });
+    this.runTicks = Math.max(0, Math.floor(this.runTicks * 0.7));
+    const elapsedSeconds = this.runTicks / 60;
+    const resumeSpeed = Math.min(
+      GameConfig.MAX_SPEED_X,
+      GameConfig.BASE_SPEED_X + elapsedSeconds * GameConfig.SPEED_INCREASE_PER_SECOND
+    );
+    Matter.Body.setVelocity(this.ninjaBody, { x: resumeSpeed, y: -2 });
     Matter.Body.setAngle(this.ninjaBody, 0);
     Matter.Body.setAngularVelocity(this.ninjaBody, 0);
 
     // Refill ink and reset stats
     this.stats.ink = this.stats.maxInk;
     this.boostTicksRemaining = 0;
-    this.runTicks = Math.max(0, Math.floor(this.runTicks * 0.7));
     this.stuckTicks = 0;
     this.groundContacts = 0;
     this.isTouchingLine = false;
@@ -520,6 +525,9 @@ export class PhysicsWorld {
     // 8. Update run cycle for animation & smooth aerodynamic tilt angle
     if (this.isTouchingLine) {
       this.ninjaRunCycle += this.ninjaBody.velocity.x * 0.12;
+    } else {
+      // Keep scarf fluttering and limbs dynamic while airborne
+      this.ninjaRunCycle += Math.max(0.04, this.ninjaBody.velocity.x * 0.05);
     }
     const vx = Math.max(1, this.ninjaBody.velocity.x);
     const targetAngle = Math.max(

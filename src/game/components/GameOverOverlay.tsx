@@ -36,7 +36,6 @@ export const GameOverOverlay: React.FC<GameOverOverlayProps> = ({
     <View style={styles.container}>
       <View style={styles.card}>
         {/* Header */}
-        <Text style={styles.dangerLabel}>// SİSTEM ÇÖKTÜ //</Text>
         <Text style={styles.title}>OYUN BİTTİ</Text>
 
         {isNewRecord && (
